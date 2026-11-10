@@ -1,0 +1,44 @@
+name: backend
+
+on:
+  push:
+    paths: ["backend/**", ".github/workflows/backend.yml"]
+  pull_request:
+    paths: ["backend/**", ".github/workflows/backend.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: leopard
+          POSTGRES_PASSWORD: leopard
+          POSTGRES_DB: leopard_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U leopard"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      LEOPARD_TEST_DATABASE_URL: postgres://leopard:leopard@localhost:5432/leopard_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+      - name: Complete go.sum and verify against the checksum database
+        run: |
+          go mod tidy
+          go mod verify
+          git diff --stat -- go.mod go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
