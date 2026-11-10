@@ -1,0 +1,30 @@
+# Go
+/backend/bin/
+*.test
+*.out
+coverage.*
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+key.properties
+google-services.json
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
