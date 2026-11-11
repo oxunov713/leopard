@@ -1,0 +1,35 @@
+name: dart_core
+
+on:
+  push:
+    paths:
+      - "packages/leopard_core/**"
+      - "docs/**"
+      - ".github/workflows/dart_core.yml"
+  pull_request:
+    paths:
+      - "packages/leopard_core/**"
+      - "docs/**"
+      - ".github/workflows/dart_core.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/leopard_core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart format --output=none --set-exit-if-changed .
+      - run: dart analyze --fatal-infos
+      # Includes test/test_vectors_test.dart, which reads
+      # ../../docs/test-vectors.json: a docs change re-runs conformance.
+      - run: dart test

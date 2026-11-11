@@ -16,7 +16,8 @@ A personal, single-user, zero-knowledge password manager.
 |---|---|---|
 | 1 | Crypto specification, Go reference implementation, test vectors | **done** |
 | 2 | Go API: setup, device auth, QR login, items sync, sessions, emergency login, recovery, audit | **done** |
-| 3 | `packages/leopard_core` (Dart crypto + API client) and the Android app | pending |
+| 3 | `packages/leopard_core` (Dart crypto, item models, API client, generator, audit) | **done** |
+| 3b | Android app | pending |
 | 4 | Web app | pending |
 
 ## Layout
@@ -33,7 +34,7 @@ backend/                     Go module (API server)
   internal/ratelimit/        in-memory token buckets
   internal/config/           environment configuration
   Dockerfile                 distroless, static, non-root (Cloud Run)
-packages/leopard_core/       shared Dart package (placeholder)
+packages/leopard_core/       shared pure-Dart client core: crypto, models, API client, generator, audit
 apps/mobile/                 Android app (placeholder)
 apps/web/                    web app (placeholder)
 docs/
@@ -113,6 +114,14 @@ LEOPARD_TEST_DATABASE_URL='postgres://localhost/leopard_test?sslmode=disable' go
 
 `go test ./internal/crypto` fails if the implementation no longer reproduces
 `docs/test-vectors.json`.
+
+The Dart client core has its own suite, which checks the same vectors:
+
+```sh
+cd packages/leopard_core
+dart pub get
+dart test
+```
 
 ## Deploy
 
