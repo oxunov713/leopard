@@ -1,0 +1,24 @@
+# Flutter/Dart/Pub related
+**/doc/api/
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Miscellaneous
+*.log
+*.swp
+.DS_Store
+.history
+
+# Symbolication / obfuscation related
+app.*.symbols
+app.*.map.json

@@ -1,0 +1,62 @@
+name: web
+
+on:
+  push:
+    paths:
+      - "apps/web/**"
+      - "packages/leopard_core/**"
+      - "docs/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/leopard_core/**"
+      - "docs/**"
+      - ".github/workflows/web.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter --version
+      - run: flutter build web -h
+      - run: flutter pub get
+      - name: dart format
+        run: |
+          if ! dart format --output=none --set-exit-if-changed lib test; then
+            dart format lib test
+            git diff > "$RUNNER_TEMP/format.patch"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: format-patch
+          path: ${{ runner.temp }}/format.patch
+          if-no-files-found: ignore
+          retention-days: 1
+      - run: flutter analyze --fatal-infos
+      - run: flutter build web --release --no-web-resources-cdn --dart-define=LEOPARD_API_URL=https://api.leopard.invalid
+      - run: ls -la build/web build/web/canvaskit && cat build/web/flutter_bootstrap.js | tail -c 1500
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leopard-web
+          path: apps/web/build/web
+          if-no-files-found: error
+          retention-days: 7
