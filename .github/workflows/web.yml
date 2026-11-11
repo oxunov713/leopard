@@ -36,22 +36,19 @@ jobs:
           cache: true
       - run: flutter --version
       - run: flutter pub get
-      # On failure the reformatted sources are uploaded as a patch, so a
-      # formatting slip can be fixed with `git apply` without a local SDK.
+      # On failure the reformatted sources are printed as a patch
+      # (gzip + base64 between the markers), so a formatting slip can be
+      # fixed without a local SDK:
+      #   sed -n '/BEGIN FORMAT PATCH/,/END FORMAT PATCH/p' log | grep -v PATCH | base64 -d | gunzip | git apply
       - name: dart format
         run: |
           if ! dart format --output=none --set-exit-if-changed lib test test_browser; then
-            dart format lib test test_browser
-            git diff -- lib test test_browser > "$RUNNER_TEMP/format.patch"
+            dart format lib test test_browser > /dev/null
+            echo "-----BEGIN FORMAT PATCH-----"
+            git diff -- lib test test_browser | gzip -9 | base64 -w 120
+            echo "-----END FORMAT PATCH-----"
             exit 1
           fi
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: format-patch
-          path: ${{ runner.temp }}/format.patch
-          if-no-files-found: ignore
-          retention-days: 1
       - run: flutter analyze --fatal-infos
       - run: flutter test
       # The same crypto as above, but in a real browser: Web Crypto for
