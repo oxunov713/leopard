@@ -205,7 +205,7 @@ void main() {
     await tester.pump(const Duration(seconds: 60));
     await settle(tester);
     expect(find.byType(LoginPage), findsOneWidget);
-    expect(find.textContaining('5 minutes without activity'), findsOneWidget);
+    expect(find.textContaining('Locked after 5 minutes'), findsOneWidget);
     expect(keys.vaultKey, everyElement(0));
 
     await unmount(tester);

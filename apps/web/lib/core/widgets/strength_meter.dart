@@ -69,12 +69,16 @@ class StrengthMeter extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Text(
-              '${bits.round()} bits of entropy',
-              key: const Key('generator-entropy'),
-              style: const TextStyle(
-                fontSize: 12,
-                color: LeopardColors.textMuted,
+            Flexible(
+              child: Text(
+                '${bits.round()} bits of entropy',
+                key: const Key('generator-entropy'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: LeopardColors.textMuted,
+                ),
               ),
             ),
           ],

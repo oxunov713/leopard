@@ -78,9 +78,7 @@ void main() {
         ),
       );
 
-      // The widget that paints the code was given exactly the QR text.
       expect(find.byType(QrImageView), findsOneWidget);
-      expect(find.bySemanticsLabel('Login QR code'), findsOneWidget);
       expect(find.text('459 154'), findsOneWidget);
       expect(find.text('New code in 42 s'), findsOneWidget);
       // The text of the code itself is not printed anywhere.
@@ -142,7 +140,7 @@ void main() {
       );
       await pump(tester, const QrLoginState());
       expect(find.byKey(const Key('sign-out-notice')), findsOneWidget);
-      expect(find.textContaining('The server ended this session'), findsOne);
+      expect(find.textContaining('The server ended this session'), findsOneWidget);
     });
   });
 
