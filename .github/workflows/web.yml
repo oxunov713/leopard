@@ -63,15 +63,20 @@ jobs:
       - run: >-
           flutter build web --release --no-web-resources-cdn --csp
           --dart-define=LEOPARD_API_URL=${{ vars.LEOPARD_API_URL || 'https://api.leopard.invalid' }}
-      - name: The build is self-contained
+      - name: TEMP inspect
         run: |
-          test -f build/web/canvaskit/canvaskit.wasm
-          test -f build/web/main.dart.js
-          test ! -e build/web/flutter_service_worker.js
-          # No inline script in the page: the CSP allows script-src 'self' only.
-          ! grep -n '<script>' build/web/index.html
-          ls -la build/web build/web/canvaskit
-          tail -c 1200 build/web/flutter_bootstrap.js
+          ls -la build/web build/web/canvaskit || true
+          head -c 600 build/web/flutter_service_worker.js || true
+          echo; tail -c 1500 build/web/flutter_bootstrap.js; echo
+          cat build/web/index.html
+          grep -o 'new Function' build/web/canvaskit/canvaskit.js | wc -l
+          grep -o 'new Function\|eval(' build/web/main.dart.js | sort | uniq -c
+          grep -o 'https://[a-zA-Z0-9./_-]*' build/web/main.dart.js build/web/flutter_bootstrap.js | sort | uniq -c | sort -rn | head -40
+          for o in O2 O4; do
+            dart compile js -$o -o "$RUNNER_TEMP/bench_$o.js" tool/argon2_bench.dart
+            (echo 'globalThis.self = globalThis;'; cat "$RUNNER_TEMP/bench_$o.js") > "$RUNNER_TEMP/b_$o.js"
+            node --version; node "$RUNNER_TEMP/b_$o.js" || true
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: leopard-web
