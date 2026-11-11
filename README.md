@@ -17,8 +17,8 @@ A personal, single-user, zero-knowledge password manager.
 | 1 | Crypto specification, Go reference implementation, test vectors | **done** |
 | 2 | Go API: setup, device auth, QR login, items sync, sessions, emergency login, recovery, audit | **done** |
 | 3 | `packages/leopard_core` (Dart crypto, item models, API client, generator, audit) | **done** |
-| 3b | Android app | pending |
-| 4 | Web app | pending |
+| 4 | `apps/mobile`: Android app (setup, unlock, vault, generator, health, QR approval, sessions) | **done** |
+| 5 | Web app | pending |
 
 ## Layout
 
@@ -35,7 +35,7 @@ backend/                     Go module (API server)
   internal/config/           environment configuration
   Dockerfile                 distroless, static, non-root (Cloud Run)
 packages/leopard_core/       shared pure-Dart client core: crypto, models, API client, generator, audit
-apps/mobile/                 Android app (placeholder)
+apps/mobile/                 Android app (Flutter)
 apps/web/                    web app (placeholder)
 docs/
   crypto-spec.md             the protocol, byte for byte
@@ -57,7 +57,8 @@ docs/
   and the server hands the result to the browser exactly once. Both screens
   show the same 6-digit code.
 - **Emergency login** without the phone: master password + TOTP.
-- **Lost phone:** the recovery key registers a new phone and revokes the old one.
+- **Lost phone:** the recovery key registers a new phone and revokes the old one
+  (protocol and server are done; the Android app does not have the screen yet).
 
 Details and threat model: [`docs/crypto-spec.md`](docs/crypto-spec.md).
 
