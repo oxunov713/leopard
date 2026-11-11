@@ -1,0 +1,98 @@
+# Netlify configuration for the Leopard web app (Flutter Web).
+#
+# The app is built in GitHub Actions (or locally), NOT on Netlify: Netlify's
+# build image has no Flutter SDK. Deploy the prebuilt directory, for example:
+#   netlify deploy --prod --dir=apps/web/build/web
+# See docs/deploy.md, section "Web (Netlify)".
+
+[build]
+  # Prebuilt Flutter output. No build command on purpose.
+  publish = "build/web"
+
+# ---------------------------------------------------------------------------
+# Security headers (all paths)
+# ---------------------------------------------------------------------------
+# OWNER ACTION: replace https://LEOPARD_API_HOST in connect-src with the exact
+# Cloud Run origin (https://leopard-api-xxxx-uc.a.run.app, no trailing slash).
+#
+# This CSP is a STARTING POINT. The web app agent may report extra needs
+# (for example another connect-src host, or a script/style hash); extend it only
+# as far as strictly needed and re-check the browser console for CSP reports.
+#
+# Notes on the directives:
+# - style-src 'unsafe-inline': Flutter Web injects inline style attributes and
+#   <style> elements at runtime; a strict style-src breaks rendering.
+# - script-src 'wasm-unsafe-eval': required for CanvasKit / WebAssembly. Plain
+#   'unsafe-eval' is NOT granted.
+# - worker-src blob: CanvasKit and the service worker may spawn blob workers.
+# - img-src data: blob: Flutter decodes images from memory.
+# - Clipboard write is used by the app, so Permissions-Policy does not block it.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://LEOPARD_API_HOST; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "DENY"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), clipboard-read=()"
+
+# ---------------------------------------------------------------------------
+# Caching
+# ---------------------------------------------------------------------------
+# Entry points and anything that decides which build is live must never be
+# served stale, otherwise users can get a mix of old and new files.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/flutter_service_worker.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/flutter_bootstrap.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/version.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/main.dart.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# Flutter does NOT content-hash /assets/* (AssetManifest, fonts, images keep
+# their names between builds) and /canvaskit/* is only versioned by engine, so
+# "immutable" would pin stale files after a redeploy. Use a moderate max-age
+# with revalidation instead. If you later add hashed filenames, switch to
+# "public, max-age=31536000, immutable" for those paths.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+[[headers]]
+  for = "/canvaskit/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, must-revalidate"
+
+# ---------------------------------------------------------------------------
+# SPA fallback: unknown paths serve the app shell. Real files win (force=false).
+# ---------------------------------------------------------------------------
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
