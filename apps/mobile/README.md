@@ -15,7 +15,9 @@ Protocol: [`docs/crypto-spec.md`](../../docs/crypto-spec.md). API: [`docs/api.md
 
 | Area | Behaviour |
 |---|---|
-| First run | Server address (https only) and optional setup token; master password with strength meter (at least 12 characters and about 60 bits); recovery key shown once, "I wrote it down", two groups typed back; TOTP enrolment (QR + secret, one code verified); then `POST /v1/setup` |
+| First run | "Create new vault" or "Restore with recovery key" |
+| New vault | Server address (https only) and optional setup token; master password with strength meter (at least 12 characters and about 60 bits); recovery key shown once, "I wrote it down", two groups typed back; TOTP enrolment (QR + secret, one code verified); then `POST /v1/setup` |
+| Lost phone | Server address, phone name, the paper recovery key (grouped Base32; spaces, dashes and lower case accepted, checked on the phone before anything is sent) and the master password; a new Ed25519 device key, `POST /v1/recovery/register-device` with the recovery auth key, VK unwrapped from `wrapped_vk_recovery`, keys stored as at setup. Afterwards the app says that every other phone and session was signed out and that VK was not rotated, then opens the vault. Wrong key (401), rate limit (429, 5 an hour) and network errors have their own messages |
 | Unlock | The phone's screen lock (PIN, pattern, password; a biometric only if Android offers one) on app open; master password always available as an explicit option, and the only gate on a phone with no screen lock (Argon2id in a background isolate) |
 | Auto-lock | 30 s after the app leaves the screen the vault key is zeroed and every vault screen is closed |
 | Vault | List, search, filter by type; view, add, edit, delete for login, card, Wi-Fi, API key, SSH key, secure note. No CVV field, by design |
@@ -46,8 +48,8 @@ lib/
     presentation/          Cubit + pages
 ```
 
-Features: `setup`, `unlock`, `vault`, `generator`, `health`, `qr_approve`,
-`sessions`. Cubits, repositories and domain code do not import Flutter, so
+Features: `setup`, `restore`, `unlock`, `vault`, `generator`, `health`,
+`qr_approve`, `sessions`. Cubits, repositories and domain code do not import Flutter, so
 their tests are plain Dart tests.
 
 ## Security design
@@ -57,7 +59,18 @@ with `flutter_secure_storage`: AES-GCM under a key wrapped by a key in the
 Android Keystore. Next to them the phone keeps `wrapped_vk_master`, the
 Argon2id salt and parameters (the same values the server holds) for the
 master-password fallback. The recovery key and the master password are never
-stored. Nothing decrypted is ever written to disk: there is no local item
+stored.
+
+A phone restored with the recovery key builds its own `wrapped_vk_master`:
+`register-device` returns the salt and Argon2id parameters but not the
+server's `wrapped_vk_master`, so the phone derives the KEK from the master
+password typed during restore and wraps the recovered VK under it with a
+fresh nonce. The phone cannot check that password against the server (there
+is no endpoint for it without TOTP), so it is asked twice; a wrong one would
+only affect this phone's master-password fallback, never the server or the
+web login.
+
+Nothing decrypted is ever written to disk: there is no local item
 cache, the vault is fetched after every unlock.
 
 **The device-credential gate.** The phone is the key; the gate in front of
@@ -118,9 +131,9 @@ no screen lock it requires the master password instead.
 
 ## Not in this version
 
-- **Recovery on a new phone** (`POST /v1/recovery/register-device`). A phone
-  that loses its keys (reinstall, "Remove vault from this phone") cannot get
-  back in from this app yet. `leopard_core` already has the client call.
+- Rotating the vault key after a recovery (crypto-spec §8, v1 limitation): the
+  old phone loses server access, but anything it already decrypted stays
+  exposed.
 - Offline access: there is no encrypted local cache.
 - Changing the master password, and one-time codes generated from a login's
   TOTP secret.

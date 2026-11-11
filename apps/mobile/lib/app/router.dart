@@ -12,6 +12,8 @@ import '../features/health/presentation/health_cubit.dart';
 import '../features/health/presentation/health_page.dart';
 import '../features/qr_approve/presentation/qr_approve_cubit.dart';
 import '../features/qr_approve/presentation/qr_approve_page.dart';
+import '../features/restore/presentation/restore_cubit.dart';
+import '../features/restore/presentation/restore_page.dart';
 import '../features/sessions/presentation/activity_cubit.dart';
 import '../features/sessions/presentation/activity_page.dart';
 import '../features/sessions/presentation/security_page.dart';
@@ -19,6 +21,7 @@ import '../features/sessions/presentation/sessions_cubit.dart';
 import '../features/sessions/presentation/sessions_page.dart';
 import '../features/setup/presentation/setup_cubit.dart';
 import '../features/setup/presentation/setup_page.dart';
+import '../features/setup/presentation/welcome_page.dart';
 import '../features/unlock/presentation/unlock_cubit.dart';
 import '../features/unlock/presentation/unlock_page.dart';
 import '../features/vault/presentation/item_detail_page.dart';
@@ -29,22 +32,26 @@ import 'home_shell.dart';
 
 /// Where the app must be for a given lock state, or `null` to stay.
 ///
-/// Every route outside `/`, `/setup` and `/unlock` shows vault content and
+/// Every route outside `/`, `/setup/**` and `/unlock` shows vault content and
 /// is reachable only while unlocked.
 String? redirectFor(AppLockStatus status, String location) {
   switch (status) {
     case AppLockStatus.starting || AppLockStatus.storageError:
       return location == '/' ? null : '/';
     case AppLockStatus.needsSetup:
-      return location == '/setup' ? null : '/setup';
+      return _isSetup(location) ? null : '/setup';
     case AppLockStatus.locked:
       return location == '/unlock' ? null : '/unlock';
     case AppLockStatus.unlocked:
-      return (location == '/' || location == '/setup' || location == '/unlock')
+      return (location == '/' || location == '/unlock' || _isSetup(location))
           ? '/vault'
           : null;
   }
 }
+
+/// `/setup` (create or restore), `/setup/create` and `/setup/restore`.
+bool _isSetup(String location) =>
+    location == '/setup' || location.startsWith('/setup/');
 
 /// Re-runs the router's redirect whenever the lock state changes.
 class _LockListenable extends ChangeNotifier {
@@ -75,10 +82,26 @@ GoRouter buildRouter({
       GoRoute(path: '/', builder: (context, state) => const _StartPage()),
       GoRoute(
         path: '/setup',
-        builder: (context, state) => BlocProvider(
-          create: (_) => SetupCubit(dependencies.setupRepository),
-          child: const SetupPage(),
+        builder: (context, state) => WelcomePage(
+          onCreate: () => context.go('/setup/create'),
+          onRestore: () => context.go('/setup/restore'),
         ),
+        routes: [
+          GoRoute(
+            path: 'create',
+            builder: (context, state) => BlocProvider(
+              create: (_) => SetupCubit(dependencies.setupRepository),
+              child: const SetupPage(),
+            ),
+          ),
+          GoRoute(
+            path: 'restore',
+            builder: (context, state) => BlocProvider(
+              create: (_) => RestoreCubit(dependencies.restoreRepository),
+              child: const RestorePage(),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/unlock',
