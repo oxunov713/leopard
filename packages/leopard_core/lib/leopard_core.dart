@@ -3,6 +3,7 @@
 /// generation and password auditing.
 library;
 
+export 'src/audit/password_audit.dart';
 export 'src/crypto/bytes.dart' show constantTimeEquals, wipe, wipeAll;
 export 'src/crypto/constants.dart';
 export 'src/crypto/encoding.dart'
@@ -22,4 +23,8 @@ export 'src/crypto/leopard_crypto.dart';
 export 'src/crypto/qr_uri.dart';
 export 'src/crypto/recovery_key.dart';
 export 'src/crypto/secure_random.dart' show randomBytes;
+export 'src/generator/eff_short_wordlist.dart';
+export 'src/generator/passphrase_generator.dart';
+export 'src/generator/password_generator.dart';
+export 'src/generator/strength.dart';
 export 'src/models/vault_item.dart';
