@@ -28,3 +28,9 @@ google-services.json
 .idea/
 .vscode/
 .DS_Store
+
+# Local offline dependency overrides (never commit)
+pubspec_overrides.yaml
+
+# Library package: the lock file belongs to the apps that depend on it
+/packages/leopard_core/pubspec.lock
