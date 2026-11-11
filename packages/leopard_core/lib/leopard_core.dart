@@ -22,3 +22,4 @@ export 'src/crypto/leopard_crypto.dart';
 export 'src/crypto/qr_uri.dart';
 export 'src/crypto/recovery_key.dart';
 export 'src/crypto/secure_random.dart' show randomBytes;
+export 'src/models/vault_item.dart';
