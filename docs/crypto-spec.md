@@ -163,16 +163,10 @@ ciphertext under a new version number, without decryption failing.
 encryptions, far beyond a personal vault. Implementations MUST NOT derive the
 nonce from the item id or version.
 
-**Plaintext** is a UTF-8 JSON object. The server never parses it; the layout is
-a client convention:
-
-```json
-{"type":"login","title":"Example","fields":{"username":"aziz","password":"…","url":"https://example.com"}}
-```
-
-`type` is one of `login`, `card`, `note`, `identity` (extensible); `title` is a
-string; `fields` is an object of string values. Clients MUST preserve unknown
-keys when re-saving. The encoded ciphertext is limited to 256 KiB by the server.
+**Plaintext** is a UTF-8 JSON object. The server never parses it; the layout
+is a client convention, defined in §14 ("Item plaintext schema v1"). Clients
+MUST preserve unknown keys when re-saving. The encoded ciphertext is limited
+to 256 KiB by the server.
 
 Tombstones (deleted items) have no ciphertext.
 
@@ -494,6 +488,11 @@ On the phone:
 Ed25519 signatures are deterministic, so signature bytes must match exactly.
 All inputs in the file are fixed patterns and MUST NOT be used as real keys.
 
+The `item_encryption` plaintext is opaque bytes as far as the vector is
+concerned. It was written before §14 existed and uses an older layout (no
+`v`, a nested `fields` object); it is deliberately left unchanged so the
+vector stays stable. A §14 reader treats it as an item of unknown version.
+
 To regenerate after a deliberate, versioned protocol change:
 
 ```
@@ -502,3 +501,119 @@ cd backend && go test ./internal/crypto -update-vectors
 
 Any change to an existing label or layout requires a new version suffix
 (`/v2`), not an edit in place.
+
+---
+
+## 14. Item plaintext schema v1
+
+This section defines the JSON object that is encrypted as an item's plaintext
+(§4). It is purely a client convention: the server stores ciphertext and
+cannot see, validate or migrate any of it. The reference implementation is
+`packages/leopard_core/lib/src/models/vault_item.dart`.
+
+### 14.1 Encoding
+
+- The plaintext is one JSON object (RFC 8259), encoded as UTF-8 without a
+  byte-order mark. Writers SHOULD emit it compactly (no insignificant
+  whitespace) and in the key order shown below. Readers MUST NOT depend on
+  key order or whitespace.
+- Member names are case-sensitive and written exactly as shown (camelCase).
+- Every item has the common members:
+
+  | Member | Type | Meaning |
+  |---|---|---|
+  | `v` | integer | Schema version. Always `1` for this section. |
+  | `type` | string | Discriminator: one of the type names in §14.2. |
+  | `title` | string | Display name. May be empty. |
+  | `createdAt` | string | When the item was first created. |
+  | `updatedAt` | string | When the item's content last changed. |
+
+- **Timestamps** are RFC 3339 strings. Writers MUST use UTC with the `Z`
+  suffix and exactly three fractional digits (`2026-11-11T10:00:05.123Z`).
+  Readers MUST accept any RFC 3339 timestamp that carries an explicit UTC
+  offset, with any number of fractional digits, and MUST reject one without
+  an offset. `createdAt` and `updatedAt` live inside the ciphertext on
+  purpose: the server's own `updated_at` is unauthenticated metadata, and
+  password-age checks must not depend on it. `updatedAt` is set by the client
+  on every edit; `createdAt` never changes.
+- **Required members** MUST be present with the stated JSON type, even when
+  empty (`""`, `[]`). **Optional members** (marked `?`) are omitted when they
+  have no value; writers MUST NOT emit `null` for them, and readers MUST treat
+  `null` like absence.
+- All secrets are JSON strings and are not transformed in any way (no
+  trimming, no normalisation).
+
+### 14.2 Item types
+
+Members are listed in writing order, between `title` and `createdAt`.
+
+| `type` | Members | Notes |
+|---|---|---|
+| `login` | `username`: string, `password`: string, `urls`: array of strings, `notes`: string, `totp`?: string | `urls` may be empty. `totp` is an `otpauth://` URI or a bare Base32 secret for *that site's* second factor (unrelated to §7). |
+| `card` | `holder`: string, `number`: string, `expMonth`: integer 1–12, `expYear`: integer, four digits, `notes`: string | See the CVV rule below. `number` is stored as entered. |
+| `wifi` | `ssid`: string, `password`: string, `security`: string, `notes`: string | `security` is `open`, `wep`, `wpa`, `wpa2` or `wpa3`; readers MUST keep any other string unchanged. `password` is empty for an open network. |
+| `apiKey` | `service`: string, `key`: string, `secret`?: string, `notes`: string | `secret` is for services that issue a key id plus a secret. |
+| `sshKey` | `privateKey`: string, `publicKey`?: string, `passphrase`?: string, `notes`: string | Keys are stored as their text file contents. |
+| `secureNote` | `body`: string | |
+
+**No card verification code.** There is no member for the CVV/CVC and there
+never will be in v1. Writers MUST NOT store it under any name. Readers MUST
+drop the members `cvv`, `cvv2`, `cvc`, `cvc2`, `cid`, `csc` and `securityCode`
+from a `card` if they encounter them, and MUST NOT write them back.
+
+### 14.3 Examples
+
+```json
+{"v":1,"type":"login","title":"Example","username":"aziz","password":"correct horse battery staple","urls":["https://example.com"],"notes":"","totp":"otpauth://totp/Example:aziz?secret=JBSWY3DPEHPK3PXP","createdAt":"2026-11-11T10:00:05.123Z","updatedAt":"2026-11-12T08:30:00.000Z"}
+```
+
+```json
+{"v":1,"type":"card","title":"Visa","holder":"A. Example","number":"4111 1111 1111 1111","expMonth":9,"expYear":2031,"notes":"","createdAt":"2026-11-11T10:00:05.123Z","updatedAt":"2026-11-11T10:00:05.123Z"}
+```
+
+```json
+{"v":1,"type":"wifi","title":"Home","ssid":"leopard-5g","password":"…","security":"wpa3","notes":"","createdAt":"2026-11-11T10:00:05.123Z","updatedAt":"2026-11-11T10:00:05.123Z"}
+```
+
+```json
+{"v":1,"type":"apiKey","title":"Object storage","service":"S3","key":"AKIAEXAMPLE","secret":"…","notes":"read-only","createdAt":"2026-11-11T10:00:05.123Z","updatedAt":"2026-11-11T10:00:05.123Z"}
+```
+
+```json
+{"v":1,"type":"sshKey","title":"Laptop","privateKey":"-----BEGIN OPENSSH PRIVATE KEY-----\n…","publicKey":"ssh-ed25519 AAAA… aziz@laptop","notes":"","createdAt":"2026-11-11T10:00:05.123Z","updatedAt":"2026-11-11T10:00:05.123Z"}
+```
+
+```json
+{"v":1,"type":"secureNote","title":"Note","body":"…","createdAt":"2026-11-11T10:00:05.123Z","updatedAt":"2026-11-11T10:00:05.123Z"}
+```
+
+### 14.4 Reading rules and forward compatibility
+
+1. If the plaintext is not a UTF-8 JSON object, the item is corrupt: report
+   an error for that item and leave the stored ciphertext alone.
+2. If `v` is not the integer `1`, or `type` is not one of the names above,
+   the item was written by a newer (or pre-schema) client. The reader MUST
+   keep the whole object verbatim, MUST NOT offer to edit it, and if it has
+   to re-encrypt the item (for example after a version conflict) MUST write
+   the object back unchanged. It MAY show `title` if that member is a string.
+3. If `v` is `1` and `type` is known, every required member MUST be present
+   with the right type; otherwise the item is malformed and is reported as an
+   error (rule 1). A reader MUST NOT silently substitute defaults for
+   secrets.
+4. **Unknown members** of a known type MUST be preserved: kept in memory with
+   their JSON values and written back, after the known members, whenever the
+   item is saved. This is what lets a later minor revision add optional
+   members without a version bump. The only exception is the forbidden card
+   members of §14.2.
+5. An unknown member can never override a known one: when writing, the known
+   members win.
+
+### 14.5 Versioning
+
+Adding an optional member, or a new `type`, does not change `v`: old readers
+preserve what they do not understand (rules 2 and 4). Anything an old reader
+would misinterpret (renaming or retyping a member, changing its meaning,
+making a new member required) needs `"v":2`, which v1 readers will refuse to
+edit. This is independent of the `/v1` suffix of the cryptographic labels in
+§2.3: the schema can change without touching the cryptography, and vice
+versa.
