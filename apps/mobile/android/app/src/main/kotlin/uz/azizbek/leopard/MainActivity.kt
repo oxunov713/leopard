@@ -15,7 +15,7 @@ import io.flutter.plugin.common.MethodChannel
 /**
  * The only activity of the app.
  *
- * It is a [FlutterFragmentActivity] because local_auth shows the biometric
+ * It is a [FlutterFragmentActivity] because local_auth shows the system auth
  * prompt through androidx.biometric, which needs a FragmentActivity.
  */
 class MainActivity : FlutterFragmentActivity() {

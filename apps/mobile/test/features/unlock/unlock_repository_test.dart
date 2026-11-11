@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:leopard_core/leopard_core.dart';
 import 'package:leopard_mobile/core/error/failures.dart';
-import 'package:leopard_mobile/core/security/biometric_authenticator.dart';
+import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/core/security/key_derivation.dart';
 import 'package:leopard_mobile/core/session/vault_session.dart';
 import 'package:leopard_mobile/core/storage/device_store.dart';
@@ -26,7 +26,7 @@ void main() {
   late SecureDeviceStore store;
   late VaultSession session;
   late MockRemoteVault remote;
-  late MockBiometricAuthenticator biometrics;
+  late MockDeviceAuthenticator deviceAuth;
   late MockKeyDerivation kdf;
   late UnlockRepositoryImpl repository;
 
@@ -63,7 +63,7 @@ void main() {
     );
     session = VaultSession();
     remote = MockRemoteVault();
-    biometrics = MockBiometricAuthenticator();
+    deviceAuth = MockDeviceAuthenticator();
     kdf = MockKeyDerivation();
     when(
       () => kdf.deriveKek(
@@ -82,19 +82,22 @@ void main() {
       store: store,
       session: session,
       remote: remote,
-      biometrics: biometrics,
+      deviceAuth: deviceAuth,
       keyDerivation: kdf,
       crypto: crypto,
     );
   });
 
-  group('biometric unlock', () {
+  group('device credential unlock', () {
     test('success loads the keys into memory', () async {
       when(
-        () => biometrics.authenticate(reason: any(named: 'reason')),
-      ).thenAnswer((_) async => BiometricOutcome.success);
+        () => deviceAuth.authenticate(reason: any(named: 'reason')),
+      ).thenAnswer((_) async => DeviceAuthOutcome.success);
 
-      expect(await repository.unlockWithBiometrics(), BiometricOutcome.success);
+      expect(
+        await repository.unlockWithDeviceCredential(),
+        DeviceAuthOutcome.success,
+      );
 
       expect(session.isUnlocked, isTrue);
       final vault = session.require;
@@ -106,9 +109,10 @@ void main() {
     });
 
     for (final outcome in [
-      BiometricOutcome.cancelled,
-      BiometricOutcome.lockedOut,
-      BiometricOutcome.unavailable,
+      DeviceAuthOutcome.cancelled,
+      DeviceAuthOutcome.lockedOut,
+      DeviceAuthOutcome.noScreenLock,
+      DeviceAuthOutcome.unavailable,
     ]) {
       test('$outcome: the keys are not even read', () async {
         final guarded = MockDeviceStore();
@@ -116,21 +120,39 @@ void main() {
           store: guarded,
           session: session,
           remote: remote,
-          biometrics: biometrics,
+          deviceAuth: deviceAuth,
           keyDerivation: kdf,
           crypto: crypto,
         );
         when(
-          () => biometrics.authenticate(reason: any(named: 'reason')),
+          () => deviceAuth.authenticate(reason: any(named: 'reason')),
         ).thenAnswer((_) async => outcome);
 
-        expect(await repository.unlockWithBiometrics(), outcome);
+        expect(await repository.unlockWithDeviceCredential(), outcome);
 
         expect(session.isUnlocked, isFalse);
         verifyNever(() => guarded.readSecrets());
         verifyNever(() => remote.configure(any()));
       });
     }
+  });
+
+  group('without a screen lock', () {
+    test('the status is reported and nothing unlocks by itself', () async {
+      when(
+        deviceAuth.lockStatus,
+      ).thenAnswer((_) async => DeviceLockStatus.none);
+      expect(await repository.deviceLockStatus(), DeviceLockStatus.none);
+      expect(session.isUnlocked, isFalse);
+    });
+
+    test('the master password still opens the vault', () async {
+      when(
+        deviceAuth.lockStatus,
+      ).thenAnswer((_) async => DeviceLockStatus.none);
+      expect(await repository.unlockWithMasterPassword('right'), isTrue);
+      expect(session.isUnlocked, isTrue);
+    });
   });
 
   group('master password fallback', () {
@@ -146,7 +168,7 @@ void main() {
           params: KdfParams.v1,
         ),
       ).called(1);
-      verifyNever(() => biometrics.authenticate(reason: any(named: 'reason')));
+      verifyNever(() => deviceAuth.authenticate(reason: any(named: 'reason')));
     });
 
     test('a wrong password leaves the vault locked', () async {

@@ -17,8 +17,14 @@ enum QrApproveStatus {
   /// Showing the request; waiting for Approve or Reject.
   review,
 
-  /// The biometric prompt is showing.
+  /// The system screen-lock prompt is showing.
   authenticating,
+
+  /// The phone has no screen lock; the master password is asked instead.
+  passwordRequired,
+
+  /// Argon2id is checking the master password.
+  verifyingPassword,
 
   /// Sending the approval or rejection.
   submitting,
@@ -47,13 +53,14 @@ final class QrApproveState extends Equatable {
   bool get busy =>
       status == QrApproveStatus.loading ||
       status == QrApproveStatus.authenticating ||
+      status == QrApproveStatus.verifyingPassword ||
       status == QrApproveStatus.submitting;
 
   @override
   List<Object?> get props => [status, request, message];
 }
 
-/// Scan → review → biometric → approve, for a browser login.
+/// Scan → review → screen lock (or master password) → approve, for a browser login.
 class QrApproveCubit extends Cubit<QrApproveState> {
   QrApproveCubit(this._repository, {DateTime Function() now = DateTime.now})
     : _now = now,
@@ -76,7 +83,9 @@ class QrApproveCubit extends Cubit<QrApproveState> {
       _expiry = Timer(remaining.isNegative ? Duration.zero : remaining, () {
         if (isClosed) return;
         if (state.status == QrApproveStatus.review ||
-            state.status == QrApproveStatus.authenticating) {
+            state.status == QrApproveStatus.authenticating ||
+            state.status == QrApproveStatus.passwordRequired ||
+            state.status == QrApproveStatus.verifyingPassword) {
           emit(
             QrApproveState(
               status: QrApproveStatus.expired,
@@ -94,7 +103,8 @@ class QrApproveCubit extends Cubit<QrApproveState> {
     }
   }
 
-  /// Approve: biometric first, then encrypt, sign and send.
+  /// Approve: the phone's screen lock first (the master password on a phone
+  /// without one), then encrypt, sign and send.
   Future<void> approve() async {
     final request = state.request;
     if (state.status != QrApproveStatus.review || request == null) return;
@@ -102,30 +112,93 @@ class QrApproveCubit extends Cubit<QrApproveState> {
       QrApproveState(status: QrApproveStatus.authenticating, request: request),
     );
     try {
-      final present = await _repository.confirmPresence();
+      final presence = await _repository.confirmPresence();
       if (isClosed || state.status != QrApproveStatus.authenticating) return;
-      if (!present) {
+      switch (presence) {
+        case PresenceResult.confirmed:
+          await _send(request);
+        case PresenceResult.passwordRequired:
+          emit(
+            QrApproveState(
+              status: QrApproveStatus.passwordRequired,
+              request: request,
+              message:
+                  'This phone has no screen lock. Enter your master '
+                  'password to approve.',
+            ),
+          );
+        case PresenceResult.denied:
+          emit(
+            QrApproveState(
+              status: QrApproveStatus.review,
+              request: request,
+              message:
+                  'Unlock with your screen lock to approve a login. '
+                  'Nothing was sent.',
+            ),
+          );
+      }
+    } on Object catch (e) {
+      _fail(e);
+    }
+  }
+
+  /// Approve on a phone without a screen lock: the master password.
+  Future<void> approveWithPassword(String masterPassword) async {
+    final request = state.request;
+    if (state.status != QrApproveStatus.passwordRequired || request == null) {
+      return;
+    }
+    if (masterPassword.isEmpty) {
+      emit(
+        QrApproveState(
+          status: QrApproveStatus.passwordRequired,
+          request: request,
+          message: 'Enter your master password.',
+        ),
+      );
+      return;
+    }
+    emit(
+      QrApproveState(
+        status: QrApproveStatus.verifyingPassword,
+        request: request,
+      ),
+    );
+    try {
+      final ok = await _repository.verifyMasterPassword(masterPassword);
+      if (isClosed || state.status != QrApproveStatus.verifyingPassword) return;
+      if (!ok) {
         emit(
           QrApproveState(
-            status: QrApproveStatus.review,
+            status: QrApproveStatus.passwordRequired,
             request: request,
-            message:
-                'Biometric confirmation is required to approve a login. '
-                'Nothing was sent.',
+            message: 'Wrong master password. Nothing was sent.',
           ),
         );
         return;
       }
-      emit(
-        QrApproveState(status: QrApproveStatus.submitting, request: request),
-      );
-      await _repository.approve(request);
-      _expiry?.cancel();
-      if (isClosed) return;
-      emit(QrApproveState(status: QrApproveStatus.approved, request: request));
+      await _send(request);
     } on Object catch (e) {
       _fail(e);
     }
+  }
+
+  /// Leaves the master-password prompt without approving.
+  void cancelPassword() {
+    final request = state.request;
+    if (state.status != QrApproveStatus.passwordRequired || request == null) {
+      return;
+    }
+    emit(QrApproveState(status: QrApproveStatus.review, request: request));
+  }
+
+  Future<void> _send(QrLoginRequest request) async {
+    emit(QrApproveState(status: QrApproveStatus.submitting, request: request));
+    await _repository.approve(request);
+    _expiry?.cancel();
+    if (isClosed) return;
+    emit(QrApproveState(status: QrApproveStatus.approved, request: request));
   }
 
   Future<void> reject() async {

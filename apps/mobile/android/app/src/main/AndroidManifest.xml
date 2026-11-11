@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools">
     <!-- Talks to the Leopard server (https only, see network_security_config). -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Biometric gate for unlocking and for approving web logins. -->
+    <!-- System prompt (screen lock or biometric) that gates unlocking and approving web logins. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <!-- Scans the login QR code shown by the web app. -->
     <uses-permission android:name="android.permission.CAMERA"/>

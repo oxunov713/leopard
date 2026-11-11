@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:leopard_core/leopard_core.dart';
 import 'package:leopard_mobile/app/app.dart';
 import 'package:leopard_mobile/app/dependencies.dart';
-import 'package:leopard_mobile/core/security/biometric_authenticator.dart';
+import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/core/session/vault_session.dart';
 import 'package:leopard_mobile/core/storage/device_store.dart';
 import 'package:leopard_mobile/features/setup/presentation/setup_page.dart';
@@ -24,6 +24,7 @@ void main() {
   late MockRemoteVault remote;
   late MockSecretClipboard clipboard;
   late MockUnlockRepository unlock;
+  late MockDeviceAuthenticator deviceAuth;
   late MockVaultRepository vault;
   late VaultSession session;
   late UnlockedVault keys;
@@ -33,6 +34,8 @@ void main() {
     remote = MockRemoteVault();
     clipboard = MockSecretClipboard();
     unlock = MockUnlockRepository();
+    deviceAuth = MockDeviceAuthenticator();
+    when(deviceAuth.lockStatus).thenAnswer((_) async => DeviceLockStatus.none);
     vault = MockVaultRepository();
     session = VaultSession();
     keys = UnlockedVault(
@@ -43,8 +46,8 @@ void main() {
     );
     when(clipboard.clearNow).thenAnswer((_) async {});
     when(
-      unlock.biometricAvailability,
-    ).thenAnswer((_) async => BiometricAvailability.notEnrolled);
+      unlock.deviceLockStatus,
+    ).thenAnswer((_) async => DeviceLockStatus.none);
     when(() => unlock.unlockWithMasterPassword(any())).thenAnswer((_) async {
       session.open(keys);
       return true;
@@ -64,6 +67,7 @@ void main() {
     session: session,
     remote: remote,
     clipboard: clipboard,
+    deviceAuthenticator: deviceAuth,
     setupRepository: MockSetupRepository(),
     unlockRepository: unlock,
     vaultRepository: vault,

@@ -1,5 +1,6 @@
 import '../core/network/remote_vault.dart';
-import '../core/security/local_auth_biometric_authenticator.dart';
+import '../core/security/local_auth_device_authenticator.dart';
+import '../core/security/device_authenticator.dart';
 import '../core/security/key_derivation.dart';
 import '../core/security/platform_secret_clipboard.dart';
 import '../core/security/secret_clipboard.dart';
@@ -27,6 +28,7 @@ final class AppDependencies {
     required this.session,
     required this.remote,
     required this.clipboard,
+    required this.deviceAuthenticator,
     required this.setupRepository,
     required this.unlockRepository,
     required this.vaultRepository,
@@ -39,13 +41,14 @@ final class AppDependencies {
     final session = VaultSession();
     final store = SecureDeviceStore(FlutterSecureKeyValueStore());
     final remote = ApiRemoteVault(session: session, crypto: crypto);
-    final biometrics = LocalAuthBiometricAuthenticator();
+    final deviceAuth = LocalAuthDeviceAuthenticator();
     const keyDerivation = IsolateKeyDerivation();
     return AppDependencies(
       deviceStore: store,
       session: session,
       remote: remote,
       clipboard: PlatformSecretClipboard(),
+      deviceAuthenticator: deviceAuth,
       setupRepository: SetupRepositoryImpl(
         store: store,
         session: session,
@@ -57,7 +60,7 @@ final class AppDependencies {
         store: store,
         session: session,
         remote: remote,
-        biometrics: biometrics,
+        deviceAuth: deviceAuth,
         keyDerivation: keyDerivation,
         crypto: crypto,
       ),
@@ -69,7 +72,9 @@ final class AppDependencies {
       qrLoginRepository: QrLoginRepositoryImpl(
         remote: remote,
         session: session,
-        biometrics: biometrics,
+        deviceAuth: deviceAuth,
+        store: store,
+        keyDerivation: keyDerivation,
         crypto: crypto,
       ),
       sessionsRepository: SessionsRepositoryImpl(remote),
@@ -80,6 +85,7 @@ final class AppDependencies {
   final VaultSession session;
   final RemoteVault remote;
   final SecretClipboard clipboard;
+  final DeviceAuthenticator deviceAuthenticator;
   final SetupRepository setupRepository;
   final UnlockRepository unlockRepository;
   final VaultRepository vaultRepository;

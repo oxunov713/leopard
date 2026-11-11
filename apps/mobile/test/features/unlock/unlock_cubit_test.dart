@@ -1,6 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:leopard_mobile/core/error/failures.dart';
-import 'package:leopard_mobile/core/security/biometric_authenticator.dart';
+import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/features/unlock/presentation/unlock_cubit.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -13,82 +13,117 @@ void main() {
   setUp(() {
     repository = MockUnlockRepository();
     when(
-      () => repository.biometricAvailability(),
-    ).thenAnswer((_) async => BiometricAvailability.available);
+      () => repository.deviceLockStatus(),
+    ).thenAnswer((_) async => DeviceLockStatus.secured);
   });
 
   UnlockCubit build() => UnlockCubit(repository);
 
-  const available = BiometricAvailability.available;
+  const available = DeviceLockStatus.secured;
+  const noLock = DeviceLockStatus.none;
 
   group('on app open', () {
     blocTest<UnlockCubit, UnlockState>(
-      'asks for the biometric at once and unlocks',
+      'asks for the screen lock at once and unlocks',
       build: build,
       setUp: () => when(
-        () => repository.unlockWithBiometrics(),
-      ).thenAnswer((_) async => BiometricOutcome.success),
+        () => repository.unlockWithDeviceCredential(),
+      ).thenAnswer((_) async => DeviceAuthOutcome.success),
       act: (cubit) => cubit.start(),
       expect: () => const [
-        UnlockState(biometrics: available),
-        UnlockState(status: UnlockStatus.authenticating, biometrics: available),
-        UnlockState(status: UnlockStatus.unlocked, biometrics: available),
+        UnlockState(deviceLock: available),
+        UnlockState(status: UnlockStatus.authenticating, deviceLock: available),
+        UnlockState(status: UnlockStatus.unlocked, deviceLock: available),
       ],
       verify: (_) {
-        verify(() => repository.unlockWithBiometrics()).called(1);
+        verify(() => repository.unlockWithDeviceCredential()).called(1);
         verifyNever(() => repository.unlockWithMasterPassword(any()));
       },
     );
 
     blocTest<UnlockCubit, UnlockState>(
-      'without a strong biometric only the master password is offered',
+      'without a screen lock only the master password is offered',
       build: build,
       setUp: () => when(
-        () => repository.biometricAvailability(),
-      ).thenAnswer((_) async => BiometricAvailability.notEnrolled),
+        () => repository.deviceLockStatus(),
+      ).thenAnswer((_) async => DeviceLockStatus.none),
       act: (cubit) => cubit.start(),
-      expect: () => const [
-        UnlockState(biometrics: BiometricAvailability.notEnrolled),
-      ],
+      expect: () => const [UnlockState(deviceLock: noLock)],
       verify: (cubit) {
-        expect(cubit.state.canUseBiometrics, isFalse);
-        verifyNever(() => repository.unlockWithBiometrics());
+        expect(cubit.state.canUseDeviceLock, isFalse);
+        expect(cubit.state.hasNoScreenLock, isTrue);
+        verifyNever(() => repository.unlockWithDeviceCredential());
       },
     );
 
     test('start runs once even if the screen asks twice', () async {
       when(
-        () => repository.unlockWithBiometrics(),
-      ).thenAnswer((_) async => BiometricOutcome.cancelled);
+        () => repository.unlockWithDeviceCredential(),
+      ).thenAnswer((_) async => DeviceAuthOutcome.cancelled);
       final cubit = build();
       await cubit.start();
       await cubit.start();
-      verify(() => repository.unlockWithBiometrics()).called(1);
+      verify(() => repository.unlockWithDeviceCredential()).called(1);
       await cubit.close();
     });
   });
 
-  group('biometric outcomes', () {
+  group('device credential outcomes', () {
     blocTest<UnlockCubit, UnlockState>(
       'cancelled: stays locked, can retry',
       build: build,
-      seed: () => const UnlockState(biometrics: available),
+      seed: () => const UnlockState(deviceLock: available),
       setUp: () => when(
-        () => repository.unlockWithBiometrics(),
-      ).thenAnswer((_) async => BiometricOutcome.cancelled),
-      act: (cubit) => cubit.unlockWithBiometrics(),
+        () => repository.unlockWithDeviceCredential(),
+      ).thenAnswer((_) async => DeviceAuthOutcome.cancelled),
+      act: (cubit) => cubit.unlockWithDeviceCredential(),
       expect: () => const [
-        UnlockState(status: UnlockStatus.authenticating, biometrics: available),
-        UnlockState(biometrics: available),
+        UnlockState(status: UnlockStatus.authenticating, deviceLock: available),
+        UnlockState(deviceLock: available),
       ],
     );
 
+    test('failed or refused credential: stays locked, no message', () async {
+      // Android reports a wrong PIN / pattern as a failed (false) result.
+      when(
+        () => repository.unlockWithDeviceCredential(),
+      ).thenAnswer((_) async => DeviceAuthOutcome.cancelled);
+      final cubit = build();
+      await cubit.unlockWithDeviceCredential();
+      expect(cubit.state.status, UnlockStatus.idle);
+      expect(cubit.state.message, isNull);
+      verifyNever(() => repository.unlockWithMasterPassword(any()));
+      await cubit.close();
+    });
+
+    test('the phone lost its screen lock: switches to the password', () async {
+      when(
+        () => repository.unlockWithDeviceCredential(),
+      ).thenAnswer((_) async => DeviceAuthOutcome.noScreenLock);
+      final cubit = build();
+      await cubit.unlockWithDeviceCredential();
+      expect(cubit.state.status, UnlockStatus.idle);
+      expect(cubit.state.hasNoScreenLock, isTrue);
+      expect(cubit.state.message, contains('no screen lock'));
+      await cubit.close();
+    });
+
+    test('unavailable: points to the master password', () async {
+      when(
+        () => repository.unlockWithDeviceCredential(),
+      ).thenAnswer((_) async => DeviceAuthOutcome.unavailable);
+      final cubit = build();
+      await cubit.unlockWithDeviceCredential();
+      expect(cubit.state.message, contains('master password'));
+      await cubit.close();
+    });
+
     test('locked out: points to the master password', () async {
       when(
-        () => repository.unlockWithBiometrics(),
-      ).thenAnswer((_) async => BiometricOutcome.lockedOut);
+        () => repository.unlockWithDeviceCredential(),
+      ).thenAnswer((_) async => DeviceAuthOutcome.lockedOut);
       final cubit = build();
-      await cubit.unlockWithBiometrics();
+      await cubit.unlockWithDeviceCredential();
       expect(cubit.state.status, UnlockStatus.idle);
       expect(cubit.state.message, contains('master password'));
       await cubit.close();
@@ -96,10 +131,10 @@ void main() {
 
     test('a storage error is reported, not thrown', () async {
       when(
-        () => repository.unlockWithBiometrics(),
+        () => repository.unlockWithDeviceCredential(),
       ).thenThrow(const StorageFailure());
       final cubit = build();
-      await cubit.unlockWithBiometrics();
+      await cubit.unlockWithDeviceCredential();
       expect(cubit.state.status, UnlockStatus.idle);
       expect(
         cubit.state.message,

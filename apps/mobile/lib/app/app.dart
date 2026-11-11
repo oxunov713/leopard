@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/lock/app_lock_cubit.dart';
+import '../core/security/device_authenticator.dart';
 import '../core/security/secret_clipboard.dart';
 import '../features/vault/presentation/vault_cubit.dart';
 import 'dependencies.dart';
@@ -49,7 +50,7 @@ class _LeopardAppState extends State<LeopardApp> {
       }
     });
     // `hidden` is the first state in which nothing of the app is visible;
-    // a system dialog (biometric prompt, permission request) only makes it
+    // a system dialog (screen-lock prompt, permission request) only makes it
     // `inactive` and does not start the auto-lock countdown.
     _lifecycle = AppLifecycleListener(
       onHide: _lock.onBackgrounded,
@@ -74,6 +75,9 @@ class _LeopardAppState extends State<LeopardApp> {
       providers: [
         RepositoryProvider<SecretClipboard>.value(
           value: widget.dependencies.clipboard,
+        ),
+        RepositoryProvider<DeviceAuthenticator>.value(
+          value: widget.dependencies.deviceAuthenticator,
         ),
       ],
       child: MultiBlocProvider(

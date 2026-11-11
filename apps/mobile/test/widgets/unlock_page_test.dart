@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:leopard_mobile/core/security/biometric_authenticator.dart';
+import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/features/unlock/presentation/unlock_cubit.dart';
 import 'package:leopard_mobile/features/unlock/presentation/unlock_page.dart';
 import 'package:mocktail/mocktail.dart';
@@ -14,7 +14,7 @@ void main() {
   setUp(() {
     cubit = MockUnlockCubit();
     when(cubit.start).thenAnswer((_) async {});
-    when(cubit.unlockWithBiometrics).thenAnswer((_) async {});
+    when(cubit.unlockWithDeviceCredential).thenAnswer((_) async {});
     when(() => cubit.unlockWithMasterPassword(any())).thenAnswer((_) async {});
   });
 
@@ -29,36 +29,33 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('asks for the biometric as soon as it is on screen', (
+  testWidgets('asks for the screen lock as soon as it is on screen', (
     tester,
   ) async {
     await pump(tester, const UnlockState());
     verify(cubit.start).called(1);
   });
 
-  testWidgets('offers biometrics only when a strong one is enrolled', (
-    tester,
-  ) async {
-    await pump(
-      tester,
-      const UnlockState(biometrics: BiometricAvailability.available),
-    );
-    expect(find.byKey(const Key('unlock-biometric')), findsOneWidget);
+  testWidgets('offers the screen lock when the phone has one, and the '
+      'master password as an explicit option', (tester) async {
+    await pump(tester, const UnlockState(deviceLock: DeviceLockStatus.secured));
+    expect(find.byKey(const Key('unlock-device')), findsOneWidget);
+    expect(find.text('UNLOCK WITH SCREEN LOCK'), findsOneWidget);
+    expect(find.byKey(const Key('unlock-password')), findsOneWidget);
+    expect(find.text('UNLOCK WITH MASTER PASSWORD'), findsOneWidget);
+    expect(find.byKey(const Key('unlock-no-screen-lock')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('unlock-biometric')));
-    verify(cubit.unlockWithBiometrics).called(1);
+    await tester.tap(find.byKey(const Key('unlock-device')));
+    verify(cubit.unlockWithDeviceCredential).called(1);
   });
 
-  testWidgets('without a strong biometric there is only the password', (
+  testWidgets('without a screen lock there is only the password', (
     tester,
   ) async {
-    await pump(
-      tester,
-      const UnlockState(biometrics: BiometricAvailability.notEnrolled),
-    );
-    expect(find.byKey(const Key('unlock-biometric')), findsNothing);
+    await pump(tester, const UnlockState(deviceLock: DeviceLockStatus.none));
+    expect(find.byKey(const Key('unlock-device')), findsNothing);
     expect(find.byKey(const Key('unlock-password')), findsOneWidget);
-    expect(find.textContaining('Class 3'), findsOneWidget);
+    expect(find.byKey(const Key('unlock-no-screen-lock')), findsOneWidget);
   });
 
   testWidgets('the master password field is hardened', (tester) async {

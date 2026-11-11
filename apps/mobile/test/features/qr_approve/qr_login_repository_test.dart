@@ -3,9 +3,10 @@
 import 'dart:typed_data';
 
 import 'package:leopard_core/leopard_core.dart';
-import 'package:leopard_mobile/core/security/biometric_authenticator.dart';
+import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/core/security/key_derivation.dart';
 import 'package:leopard_mobile/core/session/vault_session.dart';
+import 'package:leopard_mobile/core/storage/device_store.dart';
 import 'package:leopard_mobile/features/qr_approve/data/qr_login_repository_impl.dart';
 import 'package:leopard_mobile/features/qr_approve/domain/qr_login_repository.dart';
 import 'package:mocktail/mocktail.dart';
@@ -19,12 +20,18 @@ void main() {
   final sid = bytesOf(sidSize, 0x61);
   final vaultKey = bytesOf(keySize, 0x11);
   final deviceSeed = bytesOf(ed25519SeedSize, 0x51);
+  final salt = bytesOf(saltSize, 0x21);
+  // Stands in for Argon2id(password); the KDF has its own vectors.
+  final rightKek = bytesOf(keySize, 0x71);
+  final wrongKek = bytesOf(keySize, 0x72);
 
   late X25519KeyPair browser;
   late String scanned;
   late String code;
   late MockRemoteVault remote;
-  late MockBiometricAuthenticator biometrics;
+  late MockDeviceAuthenticator deviceAuth;
+  late SecureDeviceStore store;
+  late MockKeyDerivation kdf;
   late VaultSession session;
   late QrLoginRepositoryImpl repository;
 
@@ -53,6 +60,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(Uint8List(0));
+    registerFallbackValue(KdfParams.v1);
     registerFallbackValue(
       QrApproval(
         phoneEphPub: Uint8List(0),
@@ -68,7 +76,37 @@ void main() {
     scanned = QrUri(sid: sid, browserPub: browser.publicKey).toString();
     code = await crypto.verifyCode(sid: sid, browserPub: browser.publicKey);
     remote = MockRemoteVault();
-    biometrics = MockBiometricAuthenticator();
+    deviceAuth = MockDeviceAuthenticator();
+    store = SecureDeviceStore(MemoryKeyValueStore());
+    await store.saveSecrets(
+      secrets: DeviceSecrets(
+        vaultKey: Uint8List.fromList(vaultKey),
+        deviceSeed: Uint8List.fromList(deviceSeed),
+      ),
+      masterMaterial: MasterUnlockMaterial(
+        wrappedVaultKey: await crypto.wrapVaultKey(
+          kek: rightKek,
+          vaultKey: vaultKey,
+          label: WrapLabel.master,
+        ),
+        salt: salt,
+        kdfParams: KdfParams.v1,
+      ),
+    );
+    kdf = MockKeyDerivation();
+    when(
+      () => kdf.deriveKek(
+        masterPassword: any(named: 'masterPassword'),
+        salt: any(named: 'salt'),
+        params: any(named: 'params'),
+      ),
+    ).thenAnswer(
+      (invocation) async => Uint8List.fromList(
+        invocation.namedArguments[#masterPassword] == 'right'
+            ? rightKek
+            : wrongKek,
+      ),
+    );
     session = await unlockedSession(
       crypto,
       vaultKey: vaultKey,
@@ -77,7 +115,9 @@ void main() {
     repository = QrLoginRepositoryImpl(
       remote: remote,
       session: session,
-      biometrics: biometrics,
+      deviceAuth: deviceAuth,
+      store: store,
+      keyDerivation: kdf,
       crypto: crypto,
       now: () => now,
     );
@@ -205,17 +245,42 @@ void main() {
   });
 
   group('confirmPresence', () {
-    test('is true only for a successful biometric', () async {
-      for (final outcome in BiometricOutcome.values) {
+    test('a device credential is required, not a biometric', () async {
+      final expected = {
+        DeviceAuthOutcome.success: PresenceResult.confirmed,
+        DeviceAuthOutcome.cancelled: PresenceResult.denied,
+        DeviceAuthOutcome.lockedOut: PresenceResult.denied,
+        DeviceAuthOutcome.unavailable: PresenceResult.denied,
+        DeviceAuthOutcome.noScreenLock: PresenceResult.passwordRequired,
+      };
+      expect(expected.keys, unorderedEquals(DeviceAuthOutcome.values));
+      for (final entry in expected.entries) {
         when(
-          () => biometrics.authenticate(reason: any(named: 'reason')),
-        ).thenAnswer((_) async => outcome);
+          () => deviceAuth.authenticate(reason: any(named: 'reason')),
+        ).thenAnswer((_) async => entry.key);
         expect(
           await repository.confirmPresence(),
-          outcome == BiometricOutcome.success,
-          reason: outcome.name,
+          entry.value,
+          reason: entry.key.name,
         );
       }
+    });
+  });
+
+  group('verifyMasterPassword', () {
+    test('the right password is accepted, a wrong one is not', () async {
+      expect(await repository.verifyMasterPassword('right'), isTrue);
+      expect(await repository.verifyMasterPassword('wrong'), isFalse);
+    });
+
+    test('it opens nothing and sends nothing', () async {
+      await repository.verifyMasterPassword('right');
+      verifyNever(
+        () => remote.approveQr(
+          sid: any(named: 'sid'),
+          approval: any(named: 'approval'),
+        ),
+      );
     });
   });
 

@@ -22,7 +22,7 @@ class _UnlockPageState extends State<UnlockPage> {
   @override
   void initState() {
     super.initState();
-    // The app may have locked itself while in the background. The biometric
+    // The app may have locked itself while in the background. The system
     // prompt must only be raised once the lock screen is actually visible.
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     if (lifecycle == null || lifecycle == AppLifecycleState.resumed) {
@@ -63,12 +63,14 @@ class _UnlockPageState extends State<UnlockPage> {
               const SizedBox(height: 48),
               const LeopardMark(subtitle: 'Vault locked'),
               const SizedBox(height: 40),
-              if (state.canUseBiometrics) ...[
+              if (state.canUseDeviceLock) ...[
                 OutlinedButton.icon(
-                  key: const Key('unlock-biometric'),
-                  onPressed: state.busy ? null : cubit.unlockWithBiometrics,
-                  icon: const Icon(Icons.fingerprint),
-                  label: const Text('UNLOCK WITH BIOMETRICS'),
+                  key: const Key('unlock-device'),
+                  onPressed: state.busy
+                      ? null
+                      : cubit.unlockWithDeviceCredential,
+                  icon: const Icon(Icons.phonelink_lock),
+                  label: const Text('UNLOCK WITH SCREEN LOCK'),
                 ),
                 const SizedBox(height: 28),
                 const Row(
@@ -108,19 +110,21 @@ class _UnlockPageState extends State<UnlockPage> {
                 onPressed: state.busy ? null : _submit,
                 child: Text(switch (state.status) {
                   UnlockStatus.deriving => 'CHECKING…',
-                  UnlockStatus.authenticating => 'WAITING FOR BIOMETRIC…',
-                  _ => 'UNLOCK',
+                  UnlockStatus.authenticating => 'WAITING FOR SCREEN LOCK…',
+                  _ => 'UNLOCK WITH MASTER PASSWORD',
                 }),
               ),
               if (state.status == UnlockStatus.deriving) ...[
                 const SizedBox(height: 16),
                 const LinearProgressIndicator(minHeight: 2),
               ],
-              if (state.biometrics != null && !state.canUseBiometrics) ...[
+              if (state.hasNoScreenLock) ...[
                 const SizedBox(height: 24),
                 const Text(
-                  'Biometric unlock needs a fingerprint or face enrolled '
-                  'that Android rates as strong (Class 3).',
+                  'This phone has no screen lock, so Leopard asks for your '
+                  'master password every time. Set a PIN, pattern or '
+                  'password in Android settings to unlock faster.',
+                  key: Key('unlock-no-screen-lock'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,

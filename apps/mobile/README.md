@@ -16,14 +16,14 @@ Protocol: [`docs/crypto-spec.md`](../../docs/crypto-spec.md). API: [`docs/api.md
 | Area | Behaviour |
 |---|---|
 | First run | Server address (https only) and optional setup token; master password with strength meter (at least 12 characters and about 60 bits); recovery key shown once, "I wrote it down", two groups typed back; TOTP enrolment (QR + secret, one code verified); then `POST /v1/setup` |
-| Unlock | Biometric prompt on app open; master password as fallback (Argon2id in a background isolate) |
+| Unlock | The phone's screen lock (PIN, pattern, password; a biometric only if Android offers one) on app open; master password always available as an explicit option, and the only gate on a phone with no screen lock (Argon2id in a background isolate) |
 | Auto-lock | 30 s after the app leaves the screen the vault key is zeroed and every vault screen is closed |
 | Vault | List, search, filter by type; view, add, edit, delete for login, card, Wi-Fi, API key, SSH key, secure note. No CVV field, by design |
 | Sync | `GET /v1/items?since`, `PUT` with `expected_version`; a 409 asks "keep mine / take server"; a 410 offers to save the edit as a new item |
 | Secrets on screen | Masked until tapped, hidden again after 20 s; copy clears the clipboard after 30 s |
 | Generator | Passwords and EFF-wordlist passphrases, copy, "save as new item" |
 | Health | Weak, reused and old passwords, computed on the phone |
-| Web login | Scan the browser's QR code, compare the 6-digit code, approve with a biometric or reject |
+| Web login | Scan the browser's QR code, compare the 6-digit code, approve with the phone's screen lock (master password if it has none) or reject |
 | Sessions | Active web/mobile sessions, sign out one or all web sessions; server audit log |
 
 ## Layout
@@ -36,7 +36,7 @@ lib/
     error/                 AppFailure and the error-to-text mapping
     lock/                  AppLockCubit: locked/unlocked state and auto-lock
     network/               RemoteVault: API access with device login and re-login
-    security/              biometrics, clipboard, key derivation (isolate)
+    security/              screen-lock authenticator, clipboard, key derivation (isolate)
     session/               VaultSession: the only holder of the vault key in memory
     storage/               DeviceStore on flutter_secure_storage
     widgets/               secret field, secret value tile, small shared widgets
@@ -60,35 +60,50 @@ master-password fallback. The recovery key and the master password are never
 stored. Nothing decrypted is ever written to disk: there is no local item
 cache, the vault is fetched after every unlock.
 
-**The biometric gate.** `local_auth` with `biometricOnly`, offered only when
-Android reports a Class 3 (`BIOMETRIC_STRONG`) biometric as enrolled. Two
-limits of this design that you should know about:
+**The device-credential gate.** The phone is the key; the gate in front of
+it is the phone's own screen lock. `local_auth` is called with
+`biometricOnly: false`, so the Android system prompt accepts whatever the user
+configured (PIN, pattern or password, plus a fingerprint or face if Android
+offers one). A biometric is never required and nothing in the app checks for
+one. The prompt appears on app open and resume, and before a QR approval.
+
+Without a secure screen lock (`isDeviceSupported()` is false, or Android
+answers `noCredentialsSet`) there is nothing to prompt for, so the master
+password becomes the gate: unlock and QR approval both ask for it (Argon2id in
+a background isolate, same path as the explicit "unlock with master password"
+option, which exists on every phone). Setup and the Security screen show a
+warning on such a phone recommending to set a screen lock; nothing else is
+weakened or blocked.
+
+Limits of this design that you should know about:
 
 1. The gate is a check in the app, not a property of the key: the Keystore
    key that protects the stored vault key is not bound to user
    authentication. Someone who can run code as the app on an unlocked,
-   rooted phone can read the stored keys without a fingerprint.
-2. `local_auth` asks androidx.biometric for `BIOMETRIC_WEAK | BIOMETRIC_STRONG`.
-   On a phone that has a strong fingerprint *and* a weak (Class 2) face
-   unlock enrolled, Android may accept either one in the prompt.
+   rooted phone can read the stored keys without the screen-lock credential.
+2. The strength of the gate is the strength of the screen lock. A short PIN
+   on a phone someone has watched you unlock offers little; this is the
+   deliberate trade-off of not requiring biometrics.
+3. A phone with no screen lock is protected by the master password only, and
+   the stored keys are exposed to anyone who has the unlocked phone.
 
-`flutter_secure_storage` 11 can close both gaps
-(`AndroidOptions.biometric(enforceBiometrics: true, biometricType:
-AndroidBiometricType.strongBiometricOnly)` binds the Keystore key to a
-Class 3 biometric). It changes when and how often the system prompt appears
+`flutter_secure_storage` 11 can close the first gap
+(`AndroidOptions.biometric(enforceBiometrics: ...)` binds the Keystore key to
+user authentication). It changes when and how often the system prompt appears
 and needs testing on real devices, so it is left as a follow-up; everything
-it would touch is behind `SecureKeyValueStore` and `BiometricAuthenticator`.
+it would touch is behind `SecureKeyValueStore` and `DeviceAuthenticator`.
 
 **Auto-lock.** The countdown starts when the app is hidden, not when a system
-dialog (biometric prompt, camera permission) covers it. A timer wipes the key
+dialog (screen-lock prompt, camera permission) covers it. A timer wipes the key
 after 30 s; if Android froze the process and the timer never ran, the same
 check happens with a timestamp when the app comes back.
 
 **QR approval.** `sid` and the browser key are taken from the scanned code.
 The app aborts if the server's `/details` names a different key, session or
 verification code, or if the request is no longer pending. The code shown is
-computed on the phone. Approve requires a biometric; without an enrolled
-strong biometric a login cannot be approved.
+computed on the phone. Approve requires the phone's screen lock (any
+credential Android accepts, never a biometric specifically); on a phone with
+no screen lock it requires the master password instead.
 
 **Android hardening.**
 

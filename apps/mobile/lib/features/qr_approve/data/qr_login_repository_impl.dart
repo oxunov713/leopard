@@ -1,26 +1,36 @@
+import 'dart:typed_data';
+
 import 'package:leopard_core/leopard_core.dart';
 
 import '../../../core/network/remote_vault.dart';
-import '../../../core/security/biometric_authenticator.dart';
+import '../../../core/security/device_authenticator.dart';
+import '../../../core/security/key_derivation.dart';
 import '../../../core/session/vault_session.dart';
+import '../../../core/storage/device_store.dart';
 import '../domain/qr_login_repository.dart';
 
 final class QrLoginRepositoryImpl implements QrLoginRepository {
   QrLoginRepositoryImpl({
     required RemoteVault remote,
     required VaultSession session,
-    required BiometricAuthenticator biometrics,
+    required DeviceAuthenticator deviceAuth,
+    required DeviceStore store,
+    required KeyDerivation keyDerivation,
     required LeopardCrypto crypto,
     DateTime Function() now = DateTime.now,
   }) : _remote = remote,
        _session = session,
-       _biometrics = biometrics,
+       _deviceAuth = deviceAuth,
+       _store = store,
+       _keyDerivation = keyDerivation,
        _crypto = crypto,
        _now = now;
 
   final RemoteVault _remote;
   final VaultSession _session;
-  final BiometricAuthenticator _biometrics;
+  final DeviceAuthenticator _deviceAuth;
+  final DeviceStore _store;
+  final KeyDerivation _keyDerivation;
   final LeopardCrypto _crypto;
   final DateTime Function() _now;
 
@@ -84,11 +94,38 @@ final class QrLoginRepositoryImpl implements QrLoginRepository {
   }
 
   @override
-  Future<bool> confirmPresence() async {
-    final outcome = await _biometrics.authenticate(
+  Future<PresenceResult> confirmPresence() async {
+    final outcome = await _deviceAuth.authenticate(
       reason: 'Approve the browser login',
     );
-    return outcome == BiometricOutcome.success;
+    return switch (outcome) {
+      DeviceAuthOutcome.success => PresenceResult.confirmed,
+      DeviceAuthOutcome.noScreenLock => PresenceResult.passwordRequired,
+      _ => PresenceResult.denied,
+    };
+  }
+
+  @override
+  Future<bool> verifyMasterPassword(String masterPassword) async {
+    final material = await _store.readMasterMaterial();
+    final kek = await _keyDerivation.deriveKek(
+      masterPassword: masterPassword,
+      salt: material.salt,
+      params: material.kdfParams,
+    );
+    Uint8List? vaultKey;
+    try {
+      vaultKey = await _crypto.unwrapVaultKey(
+        kek: kek,
+        wrapped: material.wrappedVaultKey,
+        label: WrapLabel.master,
+      );
+      return true;
+    } on DecryptException {
+      return false;
+    } finally {
+      wipeAll([kek, vaultKey]);
+    }
   }
 
   @override

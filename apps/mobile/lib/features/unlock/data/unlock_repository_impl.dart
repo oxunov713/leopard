@@ -4,7 +4,7 @@ import 'package:leopard_core/leopard_core.dart';
 
 import '../../../core/error/failures.dart';
 import '../../../core/network/remote_vault.dart';
-import '../../../core/security/biometric_authenticator.dart';
+import '../../../core/security/device_authenticator.dart';
 import '../../../core/security/key_derivation.dart';
 import '../../../core/session/vault_session.dart';
 import '../../../core/storage/device_store.dart';
@@ -15,33 +15,32 @@ final class UnlockRepositoryImpl implements UnlockRepository {
     required DeviceStore store,
     required VaultSession session,
     required RemoteVault remote,
-    required BiometricAuthenticator biometrics,
+    required DeviceAuthenticator deviceAuth,
     required KeyDerivation keyDerivation,
     required LeopardCrypto crypto,
   }) : _store = store,
        _session = session,
        _remote = remote,
-       _biometrics = biometrics,
+       _deviceAuth = deviceAuth,
        _keyDerivation = keyDerivation,
        _crypto = crypto;
 
   final DeviceStore _store;
   final VaultSession _session;
   final RemoteVault _remote;
-  final BiometricAuthenticator _biometrics;
+  final DeviceAuthenticator _deviceAuth;
   final KeyDerivation _keyDerivation;
   final LeopardCrypto _crypto;
 
   @override
-  Future<BiometricAvailability> biometricAvailability() =>
-      _biometrics.availability();
+  Future<DeviceLockStatus> deviceLockStatus() => _deviceAuth.lockStatus();
 
   @override
-  Future<BiometricOutcome> unlockWithBiometrics() async {
-    final outcome = await _biometrics.authenticate(
+  Future<DeviceAuthOutcome> unlockWithDeviceCredential() async {
+    final outcome = await _deviceAuth.authenticate(
       reason: 'Unlock your Leopard vault',
     );
-    if (outcome != BiometricOutcome.success) {
+    if (outcome != DeviceAuthOutcome.success) {
       return outcome;
     }
     final secrets = await _store.readSecrets();

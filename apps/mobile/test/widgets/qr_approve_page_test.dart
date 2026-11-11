@@ -28,6 +28,8 @@ void main() {
     cubit = MockQrApproveCubit();
     when(cubit.approve).thenAnswer((_) async {});
     when(cubit.reject).thenAnswer((_) async {});
+    when(() => cubit.approveWithPassword(any())).thenAnswer((_) async {});
+    when(cubit.cancelPassword).thenAnswer((_) {});
     when(() => cubit.scanned(any())).thenAnswer((_) async {});
   });
 
@@ -87,7 +89,7 @@ void main() {
     verify(cubit.reject).called(1);
   });
 
-  testWidgets('both buttons are disabled while the biometric prompt is up', (
+  testWidgets('both buttons are disabled while the screen-lock prompt is up', (
     tester,
   ) async {
     await pump(
@@ -98,10 +100,10 @@ void main() {
     await tester.tap(find.byKey(const Key('qr-reject')), warnIfMissed: false);
     verifyNever(cubit.approve);
     verifyNever(cubit.reject);
-    expect(find.text('WAITING FOR BIOMETRIC…'), findsOneWidget);
+    expect(find.text('WAITING FOR SCREEN LOCK…'), findsOneWidget);
   });
 
-  testWidgets('a refused biometric is explained on the review screen', (
+  testWidgets('a refused screen lock is explained on the review screen', (
     tester,
   ) async {
     await pump(
@@ -110,12 +112,57 @@ void main() {
         status: QrApproveStatus.review,
         request: request,
         message:
-            'Biometric confirmation is required to approve a login. '
+            'Unlock with your screen lock to approve a login. '
             'Nothing was sent.',
       ),
     );
     expect(find.textContaining('Nothing was sent'), findsOneWidget);
     expect(find.byKey(const Key('qr-approve')), findsOneWidget);
+  });
+
+  testWidgets('without a screen lock the master password is asked', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      QrApproveState(
+        status: QrApproveStatus.passwordRequired,
+        request: request,
+        message: 'This phone has no screen lock.',
+      ),
+    );
+    // The screen-lock Approve button is replaced by the password prompt.
+    expect(find.byKey(const Key('qr-approve')), findsNothing);
+    expect(textFieldOf(tester, const Key('qr-password')).obscureText, isTrue);
+
+    await tester.enterText(find.byKey(const Key('qr-password')), 'hunter2');
+    await tester.tap(find.byKey(const Key('qr-password-submit')));
+    await tester.pump();
+    verify(() => cubit.approveWithPassword('hunter2')).called(1);
+    expect(
+      textFieldOf(tester, const Key('qr-password')).controller!.text,
+      isEmpty,
+    );
+
+    await tester.tap(find.byKey(const Key('qr-password-cancel')));
+    verify(cubit.cancelPassword).called(1);
+  });
+
+  testWidgets('the password prompt is locked while checking', (tester) async {
+    await pump(
+      tester,
+      QrApproveState(
+        status: QrApproveStatus.verifyingPassword,
+        request: request,
+      ),
+    );
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('qr-password-submit')))
+          .onPressed,
+      isNull,
+    );
+    expect(find.text('CHECKING…'), findsOneWidget);
   });
 
   testWidgets('outcomes', (tester) async {

@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:leopard_core/leopard_core.dart';
 import 'package:leopard_mobile/core/network/remote_vault.dart';
-import 'package:leopard_mobile/core/security/biometric_authenticator.dart';
+import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/core/security/key_derivation.dart';
 import 'package:leopard_mobile/core/security/secret_clipboard.dart';
 import 'package:leopard_mobile/core/session/vault_session.dart';
@@ -31,8 +31,7 @@ class MockDeviceStore extends Mock implements DeviceStore {}
 
 class MockRemoteVault extends Mock implements RemoteVault {}
 
-class MockBiometricAuthenticator extends Mock
-    implements BiometricAuthenticator {}
+class MockDeviceAuthenticator extends Mock implements DeviceAuthenticator {}
 
 class MockKeyDerivation extends Mock implements KeyDerivation {}
 

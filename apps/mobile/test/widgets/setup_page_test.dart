@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/features/setup/presentation/setup_cubit.dart';
 import 'package:leopard_mobile/features/setup/presentation/setup_page.dart';
 import 'package:mocktail/mocktail.dart';
@@ -34,14 +35,31 @@ void main() {
     when(() => cubit.submitTotpCode(any())).thenAnswer((_) async {});
   });
 
-  Future<void> pump(WidgetTester tester, SetupState state) async {
+  Future<void> pump(
+    WidgetTester tester,
+    SetupState state, {
+    DeviceLockStatus lockStatus = DeviceLockStatus.secured,
+  }) async {
     givenState(cubit, state);
     await pumpPage(
       tester,
       const SetupPage(),
       providers: [BlocProvider<SetupCubit>.value(value: cubit)],
+      lockStatus: lockStatus,
     );
   }
+
+  testWidgets('warns on a phone without a screen lock, not otherwise', (
+    tester,
+  ) async {
+    await pump(tester, const SetupState(), lockStatus: DeviceLockStatus.none);
+    await tester.pump();
+    expect(find.byKey(const Key('screen-lock-warning')), findsOneWidget);
+
+    await pump(tester, const SetupState());
+    await tester.pump();
+    expect(find.byKey(const Key('screen-lock-warning')), findsNothing);
+  });
 
   testWidgets('server step sends address, phone name and setup token', (
     tester,

@@ -2,14 +2,14 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
 import '../../../core/error/failures.dart';
-import '../../../core/security/biometric_authenticator.dart';
+import '../../../core/security/device_authenticator.dart';
 import '../domain/unlock_repository.dart';
 
 enum UnlockStatus {
   /// Waiting for the user.
   idle,
 
-  /// The biometric prompt is showing.
+  /// The system screen-lock prompt is showing.
   authenticating,
 
   /// Argon2id is running for the master-password fallback.
@@ -21,7 +21,7 @@ enum UnlockStatus {
 final class UnlockState extends Equatable {
   const UnlockState({
     this.status = UnlockStatus.idle,
-    this.biometrics,
+    this.deviceLock,
     this.message,
     this.failedPasswordAttempts = 0,
   });
@@ -29,23 +29,26 @@ final class UnlockState extends Equatable {
   final UnlockStatus status;
 
   /// `null` until checked.
-  final BiometricAvailability? biometrics;
+  final DeviceLockStatus? deviceLock;
   final String? message;
   final int failedPasswordAttempts;
 
   bool get busy =>
       status == UnlockStatus.authenticating || status == UnlockStatus.deriving;
 
-  bool get canUseBiometrics => biometrics == BiometricAvailability.available;
+  bool get canUseDeviceLock => deviceLock == DeviceLockStatus.secured;
+
+  /// The phone has no screen lock: the master password is the only gate.
+  bool get hasNoScreenLock => deviceLock == DeviceLockStatus.none;
 
   UnlockState copyWith({
     UnlockStatus? status,
-    BiometricAvailability? biometrics,
+    DeviceLockStatus? deviceLock,
     String? Function()? message,
     int? failedPasswordAttempts,
   }) => UnlockState(
     status: status ?? this.status,
-    biometrics: biometrics ?? this.biometrics,
+    deviceLock: deviceLock ?? this.deviceLock,
     message: message == null ? this.message : message(),
     failedPasswordAttempts:
         failedPasswordAttempts ?? this.failedPasswordAttempts,
@@ -54,7 +57,7 @@ final class UnlockState extends Equatable {
   @override
   List<Object?> get props => [
     status,
-    biometrics,
+    deviceLock,
     message,
     failedPasswordAttempts,
   ];
@@ -67,43 +70,51 @@ class UnlockCubit extends Cubit<UnlockState> {
 
   bool _started = false;
 
-  /// Called once the lock screen is in front of the user: asks for the
-  /// biometric straight away if a strong one is enrolled.
+  /// Called once the lock screen is in front of the user: shows the system
+  /// screen-lock prompt straight away if the phone has a screen lock.
   Future<void> start() async {
     if (_started) return;
     _started = true;
-    final availability = await _repository.biometricAvailability();
+    final lock = await _repository.deviceLockStatus();
     if (isClosed) return;
-    emit(state.copyWith(biometrics: availability));
-    if (availability == BiometricAvailability.available) {
-      await unlockWithBiometrics();
+    emit(state.copyWith(deviceLock: lock));
+    if (lock == DeviceLockStatus.secured) {
+      await unlockWithDeviceCredential();
     }
   }
 
-  Future<void> unlockWithBiometrics() async {
+  Future<void> unlockWithDeviceCredential() async {
     if (state.busy || state.status == UnlockStatus.unlocked) return;
     emit(
       state.copyWith(status: UnlockStatus.authenticating, message: () => null),
     );
     try {
-      final outcome = await _repository.unlockWithBiometrics();
+      final outcome = await _repository.unlockWithDeviceCredential();
       if (isClosed) return;
       emit(switch (outcome) {
-        BiometricOutcome.success => state.copyWith(
+        DeviceAuthOutcome.success => state.copyWith(
           status: UnlockStatus.unlocked,
         ),
-        BiometricOutcome.cancelled => state.copyWith(status: UnlockStatus.idle),
-        BiometricOutcome.lockedOut => state.copyWith(
+        DeviceAuthOutcome.cancelled => state.copyWith(
           status: UnlockStatus.idle,
-          message: () =>
-              'Too many failed attempts. Use your master password, or try '
-              'the biometric again later.',
         ),
-        BiometricOutcome.unavailable => state.copyWith(
+        DeviceAuthOutcome.lockedOut => state.copyWith(
           status: UnlockStatus.idle,
           message: () =>
-              'Biometric unlock is not available right now. Use your '
+              'Too many failed attempts. Try again later, or use your '
               'master password.',
+        ),
+        DeviceAuthOutcome.noScreenLock => state.copyWith(
+          status: UnlockStatus.idle,
+          deviceLock: DeviceLockStatus.none,
+          message: () =>
+              'This phone has no screen lock. Use your master password.',
+        ),
+        DeviceAuthOutcome.unavailable => state.copyWith(
+          status: UnlockStatus.idle,
+          message: () =>
+              'Unlocking with the screen lock is not available right now. '
+              'Use your master password.',
         ),
       });
     } on Object catch (e) {

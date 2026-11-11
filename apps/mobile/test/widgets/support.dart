@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leopard_mobile/app/theme.dart';
 import 'package:leopard_mobile/core/lock/app_lock_cubit.dart';
+import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/core/security/secret_clipboard.dart';
 import 'package:leopard_mobile/features/qr_approve/presentation/qr_approve_cubit.dart';
 import 'package:leopard_mobile/features/setup/presentation/setup_cubit.dart';
@@ -38,11 +39,14 @@ void useTallSurface(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
-/// Pumps [page] inside the app's theme with a clipboard double above it.
+/// Pumps [page] inside the app's theme with a clipboard double and a
+/// [DeviceAuthenticator] (screen lock set, unless [lockStatus] says otherwise)
+/// above it.
 Future<MockSecretClipboard> pumpPage(
   WidgetTester tester,
   Widget page, {
   List<BlocProvider<dynamic>> providers = const [],
+  DeviceLockStatus lockStatus = DeviceLockStatus.secured,
 }) async {
   useTallSurface(tester);
   // Start from an empty tree: a BlocBuilder kept from an earlier pump in
@@ -51,10 +55,15 @@ Future<MockSecretClipboard> pumpPage(
   final clipboard = MockSecretClipboard();
   when(() => clipboard.copy(any())).thenAnswer((_) async {});
   when(clipboard.clearNow).thenAnswer((_) async {});
+  final deviceAuth = MockDeviceAuthenticator();
+  when(deviceAuth.lockStatus).thenAnswer((_) async => lockStatus);
   final app = MaterialApp(theme: buildLeopardTheme(), home: page);
   await tester.pumpWidget(
-    RepositoryProvider<SecretClipboard>.value(
-      value: clipboard,
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<SecretClipboard>.value(value: clipboard),
+        RepositoryProvider<DeviceAuthenticator>.value(value: deviceAuth),
+      ],
       child: providers.isEmpty
           ? app
           : MultiBlocProvider(providers: providers, child: app),

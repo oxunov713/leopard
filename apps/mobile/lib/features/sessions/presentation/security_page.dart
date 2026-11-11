@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/lock/app_lock_cubit.dart';
 import '../../../core/widgets/feedback.dart';
+import '../../../core/widgets/screen_lock_warning.dart';
 
 /// Entry points for everything about access: web login, sessions, the
 /// audit log, locking and removing the vault from this phone.
@@ -61,6 +62,10 @@ class SecurityPage extends StatelessWidget {
             onTap: () => context.push('/activity'),
           ),
           const SectionLabel('This phone'),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: ScreenLockWarning(),
+          ),
           ListTile(
             key: const Key('security-lock'),
             leading: const Icon(Icons.lock_outline),

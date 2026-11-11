@@ -7,6 +7,7 @@ import '../../../app/theme.dart';
 import '../../../core/security/secret_clipboard.dart';
 import '../../../core/widgets/feedback.dart';
 import '../../../core/widgets/page_scaffold.dart';
+import '../../../core/widgets/screen_lock_warning.dart';
 import '../../../core/widgets/secret_text_field.dart';
 import '../domain/setup_repository.dart';
 import 'setup_cubit.dart';
@@ -120,6 +121,7 @@ class _ServerStepState extends State<_ServerStep> {
           style: TextStyle(color: LeopardColors.textMuted),
         ),
         const SizedBox(height: 20),
+        const ScreenLockWarning(),
         TextField(
           key: const Key('setup-server-url'),
           controller: _url,

@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../app/theme.dart';
 import '../../../core/widgets/feedback.dart';
 import '../../../core/widgets/page_scaffold.dart';
+import '../../../core/widgets/secret_text_field.dart';
 import '../domain/qr_login_repository.dart';
 import 'qr_approve_cubit.dart';
 
@@ -49,6 +50,8 @@ class QrApprovePage extends StatelessWidget {
           ),
           QrApproveStatus.review ||
           QrApproveStatus.authenticating ||
+          QrApproveStatus.passwordRequired ||
+          QrApproveStatus.verifyingPassword ||
           QrApproveStatus.submitting => _Review(state: state),
           QrApproveStatus.approved => _Outcome(
             icon: Icons.verified_outlined,
@@ -172,26 +175,31 @@ class _Review extends StatelessWidget {
           ErrorText(state.message!),
         ],
         const SizedBox(height: 24),
-        FilledButton.icon(
-          key: const Key('qr-approve'),
-          onPressed: idle ? cubit.approve : null,
-          icon: const Icon(Icons.fingerprint),
-          label: Text(switch (state.status) {
-            QrApproveStatus.authenticating => 'WAITING FOR BIOMETRIC…',
-            QrApproveStatus.submitting => 'SENDING…',
-            _ => 'APPROVE',
-          }),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          key: const Key('qr-reject'),
-          onPressed: idle ? cubit.reject : null,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: LeopardColors.danger,
-            side: const BorderSide(color: LeopardColors.danger),
+        if (state.status == QrApproveStatus.passwordRequired ||
+            state.status == QrApproveStatus.verifyingPassword)
+          _PasswordPrompt(busy: state.busy)
+        else ...[
+          FilledButton.icon(
+            key: const Key('qr-approve'),
+            onPressed: idle ? cubit.approve : null,
+            icon: const Icon(Icons.phonelink_lock),
+            label: Text(switch (state.status) {
+              QrApproveStatus.authenticating => 'WAITING FOR SCREEN LOCK…',
+              QrApproveStatus.submitting => 'SENDING…',
+              _ => 'APPROVE',
+            }),
           ),
-          child: const Text('REJECT'),
-        ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            key: const Key('qr-reject'),
+            onPressed: idle ? cubit.reject : null,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: LeopardColors.danger,
+              side: const BorderSide(color: LeopardColors.danger),
+            ),
+            child: const Text('REJECT'),
+          ),
+        ],
       ],
     );
   }
@@ -203,6 +211,66 @@ class _Review extends StatelessWidget {
     String two(int v) => v.toString().padLeft(2, '0');
     return '${t.year}-${two(t.month)}-${two(t.day)} '
         '${two(t.hour)}:${two(t.minute)}:${two(t.second)}';
+  }
+}
+
+/// Asked instead of the screen-lock prompt on a phone that has no screen
+/// lock.
+class _PasswordPrompt extends StatefulWidget {
+  const _PasswordPrompt({required this.busy});
+
+  final bool busy;
+
+  @override
+  State<_PasswordPrompt> createState() => _PasswordPromptState();
+}
+
+class _PasswordPromptState extends State<_PasswordPrompt> {
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.clear();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final password = _password.text;
+    _password.clear();
+    await context.read<QrApproveCubit>().approveWithPassword(password);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<QrApproveCubit>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SecretTextField(
+          key: const Key('qr-password'),
+          controller: _password,
+          label: 'Master password',
+          enabled: !widget.busy,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _submit(),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          key: const Key('qr-password-submit'),
+          onPressed: widget.busy ? null : _submit,
+          child: Text(
+            widget.busy ? 'CHECKING…' : 'APPROVE WITH MASTER PASSWORD',
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          key: const Key('qr-password-cancel'),
+          onPressed: widget.busy ? null : cubit.cancelPassword,
+          child: const Text('CANCEL'),
+        ),
+      ],
+    );
   }
 }
 

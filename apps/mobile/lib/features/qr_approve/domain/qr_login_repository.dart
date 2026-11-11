@@ -55,6 +55,18 @@ final class QrRejectedFailure extends AppFailure {
   const QrRejectedFailure(super.message);
 }
 
+/// How the user proved that they are holding the phone.
+enum PresenceResult {
+  /// The system screen-lock prompt was passed.
+  confirmed,
+
+  /// The prompt was dismissed, failed or could not be shown.
+  denied,
+
+  /// The phone has no screen lock: the master password must be typed.
+  passwordRequired,
+}
+
 abstract interface class QrLoginRepository {
   /// Parses the scanned text and fetches the request's details.
   ///
@@ -63,8 +75,14 @@ abstract interface class QrLoginRepository {
   /// than the QR code implies, or when the request is no longer pending.
   Future<QrLoginRequest> load(String scannedText);
 
-  /// Asks for the biometric. Returns `true` when the user passed.
-  Future<bool> confirmPresence();
+  /// Asks for the phone's screen lock (PIN, pattern, password or whatever
+  /// biometric Android offers; a biometric is never required). Returns
+  /// [PresenceResult.passwordRequired] when the phone has no screen lock.
+  Future<PresenceResult> confirmPresence();
+
+  /// Fallback for a phone without a screen lock: checks the master password
+  /// offline (Argon2id in a background isolate). `false` when it is wrong.
+  Future<bool> verifyMasterPassword(String masterPassword);
 
   /// Encrypts the vault key to the browser and signs the approval.
   Future<void> approve(QrLoginRequest request);
