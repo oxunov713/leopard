@@ -237,8 +237,8 @@ flutter test --platform chrome test/browser
 | `test/widgets` | widget tests | The whole app with fakes below the repositories: login, vault, logout, 401, idle lock, public generator, narrow and wide layout |
 | `test/browser` | Chrome (skipped on the VM) | `leopard_core` through Web Crypto and JS Argon2id against values from `docs/test-vectors.json` |
 
-`pubspec.lock` is not in the repository yet. Commit the one produced by the
-first `flutter pub get` so that builds are reproducible.
+`pubspec.lock` is committed, so CI and every later build resolve the same
+package versions; update it deliberately with `flutter pub upgrade`.
 
 ## Not in this version
 

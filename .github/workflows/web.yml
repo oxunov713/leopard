@@ -76,11 +76,6 @@ jobs:
           if grep -c 'new Function\|eval(' build/web/main.dart.js build/web/canvaskit/canvaskit.js build/web/canvaskit/chromium/canvaskit.js; then exit 1; fi
           # The fonts are bundled.
           ls build/web/assets/assets/fonts/Roboto-Regular.ttf build/web/assets/assets/fonts/RobotoMono-Regular.ttf
-      - name: TEMP lock
-        run: |
-          echo "-----BEGIN LOCK-----"
-          gzip -9 < pubspec.lock | base64 -w 120
-          echo "-----END LOCK-----"
       - uses: actions/upload-artifact@v4
         with:
           name: leopard-web
