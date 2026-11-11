@@ -12,6 +12,7 @@ environment:
 dependencies:
   cryptography: ^2.9.0
   http: ^1.2.0
+  unorm_dart: ^0.3.3
 
 dev_dependencies:
   lints: ^6.0.0

@@ -964,6 +964,91 @@ void main() {
     });
   });
 
+  group('master password normalisation (NFC, crypto-spec §5)', () {
+    final salt = Uint8List.fromList(List.generate(saltSize, (i) => 0x40 + i));
+
+    Future<Uint8List> kekOf(String password) => crypto.deriveKek(
+      password: LeopardCrypto.passwordBytes(password),
+      salt: salt,
+    );
+
+    test('ASCII is encoded unchanged', () {
+      const password = ' correct horse battery staple ~!@# ';
+      expect(LeopardCrypto.normalizePassword(password), password);
+      expect(LeopardCrypto.passwordBytes(password), ascii.encode(password));
+    });
+
+    test('composed and decomposed Latin derive the same KEK', () async {
+      const composed = 'café-São-Ångström'; // é ã Å ö
+      const decomposed = 'café-São-Ångström';
+      expect(composed, isNot(decomposed));
+      expect(utf8.encode(composed), isNot(utf8.encode(decomposed)));
+
+      expect(LeopardCrypto.normalizePassword(decomposed), composed);
+      expect(
+        LeopardCrypto.passwordBytes(decomposed),
+        LeopardCrypto.passwordBytes(composed),
+      );
+      // "é" is the two bytes c3 a9, not 65 cc 81.
+      expect(hexEncode(LeopardCrypto.passwordBytes('é')), 'c3a9');
+      expect(await kekOf(decomposed), await kekOf(composed));
+    });
+
+    test('composed and decomposed Cyrillic derive the same KEK', () async {
+      const composed = 'пароль-йёў'; // пароль-йёў
+      const decomposed = 'пароль-йёў';
+      expect(composed, isNot(decomposed));
+      expect(LeopardCrypto.normalizePassword(decomposed), composed);
+      expect(LeopardCrypto.normalizePassword(composed), composed);
+      expect(await kekOf(decomposed), await kekOf(composed));
+    });
+
+    test('Uzbek oʻ / gʻ have no composed form and stay as typed', () {
+      // U+02BB MODIFIER LETTER TURNED COMMA is not a combining mark.
+      const password = 'Oʻzbekiston-gʻalaba';
+      expect(LeopardCrypto.normalizePassword(password), password);
+      expect(LeopardCrypto.passwordBytes(password), utf8.encode(password));
+      expect(hexEncode(LeopardCrypto.passwordBytes('oʻ')), '6fcabb');
+    });
+
+    test('NFC only: no compatibility mapping, trimming or case folding', () {
+      // NFKC would turn the ligature into "fi", the full-width A into "A"
+      // and the superscript into "2".
+      const password = ' ﬁＡ² ';
+      expect(LeopardCrypto.normalizePassword(password), password);
+      expect(
+        LeopardCrypto.passwordBytes('Password'),
+        isNot(LeopardCrypto.passwordBytes('password')),
+      );
+      expect(LeopardCrypto.passwordBytes(' a '), [0x20, 0x61, 0x20]);
+    });
+
+    test('combining marks are put in canonical order', () {
+      // dot below (ccc 220) sorts before dot above (ccc 230); both orders
+      // compose to U+1E69.
+      expect(LeopardCrypto.normalizePassword('ṩ'), 'ṩ');
+      expect(LeopardCrypto.normalizePassword('ṩ'), 'ṩ');
+    });
+
+    test('Hangul jamo compose and astral characters survive', () {
+      expect(LeopardCrypto.normalizePassword('한'), '한');
+      const emoji = 'key-\u{1F511}-\u{1F9E0}';
+      expect(LeopardCrypto.normalizePassword(emoji), emoji);
+      expect(LeopardCrypto.passwordBytes(emoji), utf8.encode(emoji));
+    });
+
+    test('normalisation is idempotent', () {
+      for (final s in ['é', 'Å', 'й', 'oʻ', 'abc']) {
+        final once = LeopardCrypto.normalizePassword(s);
+        expect(LeopardCrypto.normalizePassword(once), once);
+      }
+    });
+
+    test('a different password still derives a different KEK', () async {
+      expect(await kekOf('café'), isNot(await kekOf('cafe')));
+    });
+  });
+
   group('setup', () {
     test('everything unwraps and verifies end to end', () async {
       final password = LeopardCrypto.passwordBytes('correct horse battery');

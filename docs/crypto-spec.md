@@ -182,8 +182,7 @@ version 7 gives the AAD
 ## 5. Master password
 
 ```
-password_bytes = UTF-8 encoding of the password, exactly as typed
-                 (no trimming, no case folding; clients SHOULD apply Unicode NFC first)
+password_bytes = UTF-8( NFC(password) )
 salt = random(16)                                   # generated once at setup
 KEK  = Argon2id(password = password_bytes, salt = salt,
                 m = 65536 KiB (64 MiB), t = 3, p = 1, output = 32 bytes, version = 0x13)
@@ -191,6 +190,31 @@ KEK  = Argon2id(password = password_bytes, salt = salt,
 nonce             = random(12)
 wrapped_vk_master = nonce || AEAD.Seal(KEK, nonce, VK, aad = "leopard/wrap/master/v1")   # 60 bytes
 ```
+
+**Password normalisation.** Before encoding, a client MUST convert the
+password to Unicode Normalization Form C (NFC, UAX #15). The same visible
+password can arrive as different code point sequences depending on the
+keyboard or platform (`é` as U+00E9, or as U+0065 U+0301); without a common
+form, a password created on the phone might not open the vault in a browser.
+Rules:
+
+- NFC only. A client MUST NOT apply compatibility normalisation (NFKC/NFKD),
+  trimming, case folding or any other mapping: every code point that survives
+  NFC is significant, including leading and trailing spaces.
+- A string that is already NFC is encoded unchanged. That covers all ASCII
+  passwords, precomposed Latin and Cyrillic letters, and sequences that have
+  no composed form, such as Uzbek `oʻ` (U+006F U+02BB), which stays two code
+  points. The decomposed pair U+0438 U+0306 becomes `й` (U+0439).
+- Normalisation happens exactly once, immediately before UTF-8 encoding, in
+  one place per implementation (`LeopardCrypto.passwordBytes` in
+  `leopard_core`). The un-normalised string is never fed to the KDF.
+- NFC is stable for assigned characters (Unicode stability policy), so
+  implementations with different Unicode data versions agree on every
+  password made of characters assigned in the older of the two versions.
+
+The only non-ASCII password in the test vectors
+(`master_password.password_utf8`) is already in NFC, so this rule does not
+change any vector; `password_utf8_hex` is the expected `password_bytes`.
 
 The KDF parameters travel with the vault as JSON so they can be raised later:
 

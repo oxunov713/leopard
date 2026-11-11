@@ -135,12 +135,12 @@ what happens when a server lies about the browser key.
   against the v1 minimum before use, so a server cannot downgrade the KDF.
 - **`https` only.** The client refuses `http://` base URLs unless
   `allowInsecureHttp` is set (local development).
-- **Password normalisation is the caller's job.** The spec says clients
-  SHOULD apply Unicode NFC to the master password. Dart has no built-in
-  normaliser, so `LeopardCrypto.passwordBytes` encodes the string as given.
-  Both apps must normalise the same way (or both not at all) before calling
-  it, otherwise a non-ASCII password typed on one platform may not unlock on
-  the other.
+- **Password normalisation is built in.** `LeopardCrypto.passwordBytes`
+  converts the master password to Unicode NFC (crypto-spec §5, a MUST) with
+  [`package:unorm_dart`](https://pub.dev/packages/unorm_dart) before UTF-8
+  encoding, so "é" typed as one code point or as "e" + combining accent
+  derives the same key. Always go through `passwordBytes`; never call
+  `utf8.encode` on a master password yourself.
 - **The audit is local.** `PasswordAuditor` compares passwords through
   SHA-256 digests that exist only during the call. Do not persist findings
   with anything derived from a password.

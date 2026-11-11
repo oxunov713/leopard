@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 import 'bytes.dart';
 import 'constants.dart';
@@ -213,13 +214,21 @@ final class LeopardCrypto {
 
   // ---- Master password (§5, §6) ----
 
-  /// The UTF-8 bytes of a master password, exactly as given: no trimming and
-  /// no case folding.
+  /// A master password in Unicode Normalization Form C (crypto-spec §5).
   ///
-  /// The spec says clients SHOULD apply Unicode NFC first. Dart has no
-  /// built-in normaliser, so that is the caller's job; every client of one
-  /// vault must make the same choice or non-ASCII passwords will not match.
-  static Uint8List passwordBytes(String password) => utf8.encode(password);
+  /// The same password can reach the app as different code point sequences
+  /// depending on the keyboard: "é" is U+00E9 from one and U+0065 U+0301 from
+  /// another. NFC maps both to one sequence, so the password unlocks the vault
+  /// whichever device it is typed on. Nothing else is changed: no trimming,
+  /// no case folding and no compatibility (NFKC) mapping.
+  static String normalizePassword(String password) => unorm.nfc(password);
+
+  /// The bytes of a master password that go into the KDF: UTF-8 of the NFC
+  /// form of [password] (see [normalizePassword]).
+  ///
+  /// Every client MUST derive the password bytes through this function.
+  static Uint8List passwordBytes(String password) =>
+      utf8.encode(normalizePassword(password));
 
   /// `KEK = Argon2id(password, salt, params)`.
   ///

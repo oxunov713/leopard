@@ -147,6 +147,17 @@ void main() {
       );
     });
 
+    test('the vector password is already NFC, so normalising is a no-op', () {
+      final password = v['password_utf8']! as String;
+      expect(password.codeUnits.any((c) => c > 0x7f), isTrue);
+      expect(LeopardCrypto.normalizePassword(password), password);
+      expect(
+        hexEncode(utf8.encode(password)),
+        v['password_utf8_hex'],
+        reason: 'raw UTF-8 and NFC UTF-8 must agree for the vector input',
+      );
+    });
+
     test('KDF parameters round-trip through JSON', () {
       expect(KdfParams.v1.toJson(), v['kdf_params']);
     });
