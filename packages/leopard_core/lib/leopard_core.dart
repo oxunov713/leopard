@@ -3,6 +3,9 @@
 /// generation and password auditing.
 library;
 
+export 'src/api/api_client.dart';
+export 'src/api/api_exceptions.dart';
+export 'src/api/api_models.dart';
 export 'src/audit/password_audit.dart';
 export 'src/crypto/bytes.dart' show constantTimeEquals, wipe, wipeAll;
 export 'src/crypto/constants.dart';
