@@ -42,10 +42,10 @@ jobs:
       #   sed -n '/BEGIN FORMAT PATCH/,/END FORMAT PATCH/p' log | grep -v PATCH | base64 -d | gunzip | git apply
       - name: dart format
         run: |
-          if ! dart format --output=none --set-exit-if-changed lib test test_browser; then
-            dart format lib test test_browser > /dev/null
+          if ! dart format --output=none --set-exit-if-changed lib test; then
+            dart format lib test > /dev/null
             echo "-----BEGIN FORMAT PATCH-----"
-            git diff -- lib test test_browser | gzip -9 | base64 -w 120
+            git diff -- lib test | gzip -9 | base64 -w 120
             echo "-----END FORMAT PATCH-----"
             exit 1
           fi
@@ -54,7 +54,7 @@ jobs:
       # The same crypto as above, but in a real browser: Web Crypto for
       # AES-GCM / HKDF / X25519 and Argon2id compiled to JavaScript, checked
       # against values from docs/test-vectors.json.
-      - run: flutter test --platform chrome test_browser
+      - run: flutter test --platform chrome test/browser
       # --no-web-resources-cdn: CanvasKit is served from this origin, not
       #   from www.gstatic.com.
       # --csp: no dynamically generated code in the compiled JavaScript.

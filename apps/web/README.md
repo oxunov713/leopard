@@ -200,8 +200,7 @@ lib/
     generator/             presentation
 web/                       index.html, flutter_bootstrap.js, styles.css, favicon
 assets/fonts/              Roboto (Apache 2.0), Roboto Mono (OFL 1.1), with licences
-test/                      VM tests
-test_browser/              tests that run in Chrome
+test/                      VM and widget tests; test/browser runs in Chrome
 ```
 
 Cubits, repositories and domain code do not import Flutter or any browser
@@ -214,10 +213,10 @@ Flutter's `AppLifecycleListener`, the clipboard from Flutter's `Clipboard`.
 ```sh
 cd apps/web
 flutter pub get
-dart format --output=none --set-exit-if-changed lib test test_browser
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze --fatal-infos
 flutter test
-flutter test --platform chrome test_browser
+flutter test --platform chrome test/browser
 ```
 
 | Path | Runs as | Covers |
@@ -227,7 +226,7 @@ flutter test --platform chrome test_browser
 | `test/features/emergency_login` | Dart VM | Proof-first login with real HKDF / AES-GCM, wrong credentials, replay, 429, wiped keys; one real Argon2id run |
 | `test/features/vault`, `generator` | Dart VM | Sync, 409 / 410 handling, tampered or swapped ciphertext, item forms, generators |
 | `test/widgets` | widget tests | The whole app with fakes below the repositories: login, vault, logout, 401, idle lock, public generator, narrow and wide layout |
-| `test_browser` | Chrome | `leopard_core` through Web Crypto and JS Argon2id against values from `docs/test-vectors.json` |
+| `test/browser` | Chrome (skipped on the VM) | `leopard_core` through Web Crypto and JS Argon2id against values from `docs/test-vectors.json` |
 
 `pubspec.lock` is not in the repository yet. Commit the one produced by the
 first `flutter pub get` so that builds are reproducible.

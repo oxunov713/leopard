@@ -1,6 +1,8 @@
 // Runs in a real browser:
 //
-//   flutter test --platform chrome test_browser
+//   flutter test --platform chrome test/browser
+//
+// (`flutter test` on the VM skips it.)
 //
 // `leopard_core`'s own suite runs on the Dart VM, where `LeopardCrypto()`
 // is pure Dart. In the web app the same constructor selects Web Crypto for
@@ -9,6 +11,9 @@
 // docs/test-vectors.json (a browser test cannot read the file), so the
 // browser is known to produce the same bytes as the phone and the Go
 // reference implementation.
+@TestOn('browser')
+library;
+
 import 'dart:convert';
 import 'dart:typed_data';
 
