@@ -140,7 +140,10 @@ void main() {
       );
       await pump(tester, const QrLoginState());
       expect(find.byKey(const Key('sign-out-notice')), findsOneWidget);
-      expect(find.textContaining('The server ended this session'), findsOneWidget);
+      expect(
+        find.textContaining('The server ended this session'),
+        findsOneWidget,
+      );
     });
   });
 
