@@ -103,11 +103,7 @@ final class VaultRepositoryImpl implements VaultRepository {
       version: baseVersion + 1,
       plaintext: item.encode(),
     );
-    return _api.putItem(
-      id: id,
-      sealed: sealed,
-      expectedVersion: baseVersion,
-    );
+    return _api.putItem(id: id, sealed: sealed, expectedVersion: baseVersion);
   }
 
   /// Looks up what the server holds for [id] after a 409.

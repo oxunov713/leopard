@@ -218,7 +218,9 @@ class QrLoginCubit extends Cubit<QrLoginState> {
       return;
     } on MalformedResponseException catch (e) {
       if (isClosed || generation != _generation) return;
-      _finish(QrLoginState(status: QrLoginStatus.failed, error: describeError(e)));
+      _finish(
+        QrLoginState(status: QrLoginStatus.failed, error: describeError(e)),
+      );
       return;
     } on Object {
       // Offline, a timeout, a 5xx: keep the code on screen and try again.

@@ -61,9 +61,9 @@ void main() {
       clientInfo: () => {'browser': 'Leopard web'},
     );
 
-    when(
-      () => api.masterParams(),
-    ).thenAnswer((_) async => MasterParams(kdfParams: KdfParams.v1, salt: salt));
+    when(() => api.masterParams()).thenAnswer(
+      (_) async => MasterParams(kdfParams: KdfParams.v1, salt: salt),
+    );
     when(() => api.logout()).thenAnswer((_) async {});
     // "hunter2 hunter2" is the right password; anything else derives a
     // different key.
@@ -127,25 +127,28 @@ void main() {
     ).called(1);
   });
 
-  test('the proof is the master auth key, never the KEK or the password', () async {
-    await repository.login(
-      masterPassword: 'hunter2 hunter2',
-      totpCode: '492039',
-    );
-    final proof =
-        verify(
-              () => api.masterLogin(
-                totpCode: any(named: 'totpCode'),
-                proof: captureAny(named: 'proof'),
-                clientInfo: any(named: 'clientInfo'),
-              ),
-            ).captured.single
-            as Uint8List;
-    // The repository wiped its copy after the call; what the server saw is
-    // checked inside the stub. Here: it was 32 bytes and is now zeroed.
-    expect(proof, hasLength(keySize));
-    expect(proof, everyElement(0));
-  });
+  test(
+    'the proof is the master auth key, never the KEK or the password',
+    () async {
+      await repository.login(
+        masterPassword: 'hunter2 hunter2',
+        totpCode: '492039',
+      );
+      final proof =
+          verify(
+                () => api.masterLogin(
+                  totpCode: any(named: 'totpCode'),
+                  proof: captureAny(named: 'proof'),
+                  clientInfo: any(named: 'clientInfo'),
+                ),
+              ).captured.single
+              as Uint8List;
+      // The repository wiped its copy after the call; what the server saw is
+      // checked inside the stub. Here: it was 32 bytes and is now zeroed.
+      expect(proof, hasLength(keySize));
+      expect(proof, everyElement(0));
+    },
+  );
 
   test('wrong password: 401, nothing unlocked, key wiped', () async {
     await expectLater(
@@ -266,17 +269,20 @@ void main() {
     verify(() => api.logout()).called(1);
   });
 
-  test('a key wrapped for recovery is not accepted as the master copy', () async {
-    wrapped = await crypto.wrapVaultKey(
-      kek: rightKek,
-      vaultKey: vaultKey,
-      label: WrapLabel.recovery,
-    );
-    await expectLater(
-      repository.login(masterPassword: 'hunter2 hunter2', totpCode: '492039'),
-      throwsA(isA<ServerMismatchFailure>()),
-    );
-  });
+  test(
+    'a key wrapped for recovery is not accepted as the master copy',
+    () async {
+      wrapped = await crypto.wrapVaultKey(
+        kek: rightKek,
+        vaultKey: vaultKey,
+        label: WrapLabel.recovery,
+      );
+      await expectLater(
+        repository.login(masterPassword: 'hunter2 hunter2', totpCode: '492039'),
+        throwsA(isA<ServerMismatchFailure>()),
+      );
+    },
+  );
 
   test(
     'end to end with the real Argon2id: NFC forms of a password agree',

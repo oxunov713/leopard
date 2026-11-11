@@ -53,141 +53,144 @@ class GeneratorPage extends StatelessWidget {
         ],
       ),
       body: BlocBuilder<GeneratorCubit, GeneratorState>(
-        builder: (context, state) => WideBody(child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          children: [
-            Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SelectableText(
-                    state.value,
-                    key: const Key('generator-value'),
-                    style: secretTextStyle.copyWith(fontSize: 19),
-                  ),
-                  const SizedBox(height: 14),
-                  StrengthMeter(bits: state.entropyBits),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('generator-regenerate'),
-                    onPressed: cubit.regenerate,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('NEW'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('generator-copy'),
-                    onPressed: () => copySecret(
-                      context,
-                      context.read<SecretClipboard>(),
+        builder: (context, state) => WideBody(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            children: [
+              Panel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SelectableText(
                       state.value,
+                      key: const Key('generator-value'),
+                      style: secretTextStyle.copyWith(fontSize: 19),
                     ),
-                    icon: const Icon(Icons.copy_outlined),
-                    label: const Text('COPY'),
-                  ),
+                    const SizedBox(height: 14),
+                    StrengthMeter(bits: state.entropyBits),
+                  ],
                 ),
-              ],
-            ),
-            if (canSave) ...[
+              ),
               const SizedBox(height: 12),
-              FilledButton.icon(
-                key: const Key('generator-save'),
-                onPressed: () {
-                  context.read<PasswordHandoff>().offer(state.value);
-                  context.push('/vault/new/${LoginItem.typeName}');
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('SAVE AS NEW ITEM'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('generator-regenerate'),
+                      onPressed: cubit.regenerate,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('NEW'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('generator-copy'),
+                      onPressed: () => copySecret(
+                        context,
+                        context.read<SecretClipboard>(),
+                        state.value,
+                      ),
+                      icon: const Icon(Icons.copy_outlined),
+                      label: const Text('COPY'),
+                    ),
+                  ),
+                ],
               ),
-            ],
-            const SizedBox(height: 20),
-            SegmentedButton<GeneratorMode>(
-              segments: const [
-                ButtonSegment(
-                  value: GeneratorMode.password,
-                  label: Text('Password'),
-                ),
-                ButtonSegment(
-                  value: GeneratorMode.passphrase,
-                  label: Text('Passphrase'),
+              if (canSave) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  key: const Key('generator-save'),
+                  onPressed: () {
+                    context.read<PasswordHandoff>().offer(state.value);
+                    context.push('/vault/new/${LoginItem.typeName}');
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('SAVE AS NEW ITEM'),
                 ),
               ],
-              selected: {state.mode},
-              showSelectedIcon: false,
-              onSelectionChanged: (selection) => cubit.setMode(selection.first),
-            ),
-            const SizedBox(height: 8),
-            if (state.mode == GeneratorMode.password) ...[
-              _SliderRow(
-                label: 'Length',
-                value: state.length,
-                min: GeneratorCubit.minLength,
-                max: GeneratorCubit.maxLength,
-                onChanged: cubit.setLength,
-              ),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final entry in _classLabels.entries)
-                    FilterChip(
-                      key: Key('generator-class-${entry.key.name}'),
-                      label: Text(entry.value, style: secretTextStyle),
-                      selected: state.classes.contains(entry.key),
-                      showCheckmark: false,
-                      onSelected: (_) => cubit.toggleClass(entry.key),
-                    ),
+              const SizedBox(height: 20),
+              SegmentedButton<GeneratorMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: GeneratorMode.password,
+                    label: Text('Password'),
+                  ),
+                  ButtonSegment(
+                    value: GeneratorMode.passphrase,
+                    label: Text('Passphrase'),
+                  ),
                 ],
+                selected: {state.mode},
+                showSelectedIcon: false,
+                onSelectionChanged: (selection) =>
+                    cubit.setMode(selection.first),
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Avoid look-alike characters'),
-                subtitle: const Text('0 O o 1 l I |'),
-                value: state.excludeAmbiguous,
-                onChanged: cubit.setExcludeAmbiguous,
-              ),
-            ] else ...[
-              _SliderRow(
-                label: 'Words',
-                value: state.wordCount,
-                min: GeneratorCubit.minWords,
-                max: GeneratorCubit.maxWords,
-                onChanged: cubit.setWordCount,
-              ),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final entry in _separators.entries)
-                    ChoiceChip(
-                      label: Text(entry.value),
-                      selected: state.separator == entry.key,
-                      showCheckmark: false,
-                      onSelected: (_) => cubit.setSeparator(entry.key),
-                    ),
-                ],
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Capitalise words'),
-                value: state.capitalize,
-                onChanged: cubit.setCapitalize,
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Add a digit'),
-                value: state.includeNumber,
-                onChanged: cubit.setIncludeNumber,
-              ),
+              const SizedBox(height: 8),
+              if (state.mode == GeneratorMode.password) ...[
+                _SliderRow(
+                  label: 'Length',
+                  value: state.length,
+                  min: GeneratorCubit.minLength,
+                  max: GeneratorCubit.maxLength,
+                  onChanged: cubit.setLength,
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final entry in _classLabels.entries)
+                      FilterChip(
+                        key: Key('generator-class-${entry.key.name}'),
+                        label: Text(entry.value, style: secretTextStyle),
+                        selected: state.classes.contains(entry.key),
+                        showCheckmark: false,
+                        onSelected: (_) => cubit.toggleClass(entry.key),
+                      ),
+                  ],
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Avoid look-alike characters'),
+                  subtitle: const Text('0 O o 1 l I |'),
+                  value: state.excludeAmbiguous,
+                  onChanged: cubit.setExcludeAmbiguous,
+                ),
+              ] else ...[
+                _SliderRow(
+                  label: 'Words',
+                  value: state.wordCount,
+                  min: GeneratorCubit.minWords,
+                  max: GeneratorCubit.maxWords,
+                  onChanged: cubit.setWordCount,
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final entry in _separators.entries)
+                      ChoiceChip(
+                        label: Text(entry.value),
+                        selected: state.separator == entry.key,
+                        showCheckmark: false,
+                        onSelected: (_) => cubit.setSeparator(entry.key),
+                      ),
+                  ],
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Capitalise words'),
+                  value: state.capitalize,
+                  onChanged: cubit.setCapitalize,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Add a digit'),
+                  value: state.includeNumber,
+                  onChanged: cubit.setIncludeNumber,
+                ),
+              ],
             ],
-          ],
-        )),
+          ),
+        ),
       ),
     );
   }

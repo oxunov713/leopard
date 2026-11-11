@@ -83,126 +83,128 @@ class VaultListPage extends StatelessWidget {
                   child: const Icon(Icons.add),
                 )
               : null,
-          body: WideBody(child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: TextField(
-                  key: const Key('vault-search'),
-                  onChanged: cubit.setQuery,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  enableIMEPersonalizedLearning: false,
-                  textInputAction: TextInputAction.search,
-                  decoration: const InputDecoration(
-                    hintText: 'Search',
-                    prefixIcon: Icon(Icons.search),
-                    isDense: true,
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 44,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    _FilterChip(
-                      label: 'All',
-                      selected: state.typeFilter == null,
-                      onSelected: () => cubit.setTypeFilter(null),
+          body: WideBody(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  child: TextField(
+                    key: const Key('vault-search'),
+                    onChanged: cubit.setQuery,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    enableIMEPersonalizedLearning: false,
+                    textInputAction: TextInputAction.search,
+                    decoration: const InputDecoration(
+                      hintText: 'Search',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
                     ),
-                    for (final entry in itemTypeLabels.entries)
+                  ),
+                ),
+                SizedBox(
+                  height: 44,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
                       _FilterChip(
-                        key: Key('filter-${entry.key}'),
-                        label: entry.value,
-                        selected: state.typeFilter == entry.key,
-                        onSelected: () => cubit.setTypeFilter(entry.key),
+                        label: 'All',
+                        selected: state.typeFilter == null,
+                        onSelected: () => cubit.setTypeFilter(null),
                       ),
-                  ],
-                ),
-              ),
-              if (state.error != null && state.status == VaultStatus.ready)
-                _Banner(text: state.error!, color: LeopardColors.danger),
-              if (state.unreadableCount > 0)
-                _Banner(
-                  text:
-                      '${state.unreadableCount} item'
-                      '${state.unreadableCount == 1 ? '' : 's'} on the '
-                      'server could not be decrypted with this vault key '
-                      'and ${state.unreadableCount == 1 ? 'is' : 'are'} '
-                      'not shown.',
-                  color: LeopardColors.warning,
-                ),
-              Expanded(
-                child: switch (state.status) {
-                  VaultStatus.initial || VaultStatus.loading => const Center(
-                    child: CircularProgressIndicator(),
+                      for (final entry in itemTypeLabels.entries)
+                        _FilterChip(
+                          key: Key('filter-${entry.key}'),
+                          label: entry.value,
+                          selected: state.typeFilter == entry.key,
+                          onSelected: () => cubit.setTypeFilter(entry.key),
+                        ),
+                    ],
                   ),
-                  VaultStatus.failure => _LoadFailure(
-                    message: state.error ?? 'The vault could not be loaded.',
-                    onRetry: cubit.load,
+                ),
+                if (state.error != null && state.status == VaultStatus.ready)
+                  _Banner(text: state.error!, color: LeopardColors.danger),
+                if (state.unreadableCount > 0)
+                  _Banner(
+                    text:
+                        '${state.unreadableCount} item'
+                        '${state.unreadableCount == 1 ? '' : 's'} on the '
+                        'server could not be decrypted with this vault key '
+                        'and ${state.unreadableCount == 1 ? 'is' : 'are'} '
+                        'not shown.',
+                    color: LeopardColors.warning,
                   ),
-                  VaultStatus.ready => RefreshIndicator(
-                    color: LeopardColors.brass,
-                    backgroundColor: LeopardColors.surfaceHigh,
-                    onRefresh: cubit.refresh,
-                    child: visible.isEmpty
-                        ? ListView(
-                            children: [
-                              const SizedBox(height: 96),
-                              Center(
-                                child: Text(
-                                  state.entries.isEmpty
-                                      ? 'The vault is empty.\nAdd the first '
-                                            'item with +.'
-                                      : 'Nothing matches.',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: LeopardColors.textMuted,
+                Expanded(
+                  child: switch (state.status) {
+                    VaultStatus.initial || VaultStatus.loading => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                    VaultStatus.failure => _LoadFailure(
+                      message: state.error ?? 'The vault could not be loaded.',
+                      onRetry: cubit.load,
+                    ),
+                    VaultStatus.ready => RefreshIndicator(
+                      color: LeopardColors.brass,
+                      backgroundColor: LeopardColors.surfaceHigh,
+                      onRefresh: cubit.refresh,
+                      child: visible.isEmpty
+                          ? ListView(
+                              children: [
+                                const SizedBox(height: 96),
+                                Center(
+                                  child: Text(
+                                    state.entries.isEmpty
+                                        ? 'The vault is empty.\nAdd the first '
+                                              'item with +.'
+                                        : 'Nothing matches.',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: LeopardColors.textMuted,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          )
-                        : ListView.separated(
-                            padding: const EdgeInsets.only(bottom: 88),
-                            itemCount: visible.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(indent: 56),
-                            itemBuilder: (context, index) {
-                              final entry = visible[index];
-                              final subtitle = entrySubtitle(entry.item);
-                              return ListTile(
-                                key: Key('entry-${entry.id}'),
-                                leading: Icon(itemTypeIcon(entry.item.type)),
-                                title: Text(
-                                  entry.item.title.isEmpty
-                                      ? '(untitled)'
-                                      : entry.item.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: subtitle.isEmpty
-                                    ? null
-                                    : Text(
-                                        subtitle,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: LeopardColors.textMuted,
+                              ],
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.only(bottom: 88),
+                              itemCount: visible.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(indent: 56),
+                              itemBuilder: (context, index) {
+                                final entry = visible[index];
+                                final subtitle = entrySubtitle(entry.item);
+                                return ListTile(
+                                  key: Key('entry-${entry.id}'),
+                                  leading: Icon(itemTypeIcon(entry.item.type)),
+                                  title: Text(
+                                    entry.item.title.isEmpty
+                                        ? '(untitled)'
+                                        : entry.item.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: subtitle.isEmpty
+                                      ? null
+                                      : Text(
+                                          subtitle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: LeopardColors.textMuted,
+                                          ),
                                         ),
-                                      ),
-                                onTap: () =>
-                                    context.push('/vault/item/${entry.id}'),
-                              );
-                            },
-                          ),
-                  ),
-                },
-              ),
-            ],
-          )),
+                                  onTap: () =>
+                                      context.push('/vault/item/${entry.id}'),
+                                );
+                              },
+                            ),
+                    ),
+                  },
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

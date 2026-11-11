@@ -17,8 +17,7 @@ abstract class AppFailure implements Exception {
 
 /// The vault is locked: there is no vault key in memory.
 final class VaultLockedFailure extends AppFailure {
-  const VaultLockedFailure()
-    : super('The session has ended. Sign in again.');
+  const VaultLockedFailure() : super('The session has ended. Sign in again.');
 }
 
 /// Input rejected before any network or crypto work.

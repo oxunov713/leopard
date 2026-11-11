@@ -82,61 +82,63 @@ class ItemDetailPage extends StatelessWidget {
               ),
             ],
           ),
-          body: WideBody(child: ListView(
-            padding: const EdgeInsets.only(bottom: 32),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Text(
-                  item.title.isEmpty ? '(untitled)' : item.title,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const Divider(),
-              if (item is UnknownItem)
-                const Padding(
-                  padding: EdgeInsets.all(16),
+          body: WideBody(
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 32),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                   child: Text(
-                    'This item was created by a newer version of Leopard. '
-                    'It is kept unchanged and cannot be shown or edited '
-                    'here.',
-                    style: TextStyle(color: LeopardColors.textMuted),
-                  ),
-                ),
-              for (final spec in specs)
-                if (spec.key != 'title' &&
-                    (values[spec.key] ?? '').isNotEmpty) ...[
-                  SecretValueTile(
-                    key: Key('field-${spec.key}'),
-                    label: _viewLabel(spec),
-                    value: values[spec.key]!,
-                    secret: spec.secret,
-                    onCopy: () => copySecret(
-                      context,
-                      clipboard,
-                      values[spec.key]!,
-                      what: '${_viewLabel(spec)} copied',
+                    item.title.isEmpty ? '(untitled)' : item.title,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Divider(),
-                ],
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Created ${_date(item.createdAt)} · '
-                  'changed ${_date(item.updatedAt)} · '
-                  'version ${entry.version}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: LeopardColors.textMuted,
+                ),
+                const Divider(),
+                if (item is UnknownItem)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'This item was created by a newer version of Leopard. '
+                      'It is kept unchanged and cannot be shown or edited '
+                      'here.',
+                      style: TextStyle(color: LeopardColors.textMuted),
+                    ),
+                  ),
+                for (final spec in specs)
+                  if (spec.key != 'title' &&
+                      (values[spec.key] ?? '').isNotEmpty) ...[
+                    SecretValueTile(
+                      key: Key('field-${spec.key}'),
+                      label: _viewLabel(spec),
+                      value: values[spec.key]!,
+                      secret: spec.secret,
+                      onCopy: () => copySecret(
+                        context,
+                        clipboard,
+                        values[spec.key]!,
+                        what: '${_viewLabel(spec)} copied',
+                      ),
+                    ),
+                    const Divider(),
+                  ],
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Created ${_date(item.createdAt)} · '
+                    'changed ${_date(item.updatedAt)} · '
+                    'version ${entry.version}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: LeopardColors.textMuted,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          )),
+              ],
+            ),
+          ),
         );
       },
     );

@@ -36,6 +36,7 @@ jobs:
           cache: true
       - run: flutter --version
       - run: flutter pub get
+      - run: git diff -- analysis_options.yaml
       # On failure the reformatted sources are printed as a patch
       # (gzip + base64 between the markers), so a formatting slip can be
       # fixed without a local SDK:

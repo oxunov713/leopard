@@ -169,22 +169,25 @@ void main() {
       expect(session.isUnlocked, isFalse);
     });
 
-    test('approved: the vault key is decrypted and the private key wiped', () async {
-      final attempt = await repository.begin();
-      pollAnswers(await approvalFor(attempt));
+    test(
+      'approved: the vault key is decrypted and the private key wiped',
+      () async {
+        final attempt = await repository.begin();
+        pollAnswers(await approvalFor(attempt));
 
-      expect(await repository.poll(attempt), QrPollOutcome.signedIn);
+        expect(await repository.poll(attempt), QrPollOutcome.signedIn);
 
-      final vault = session.require;
-      expect(vault.vaultKey, vaultKey);
-      expect(vault.itemKey, await crypto.deriveItemKey(vaultKey));
-      expect(vault.sessionId, sessionIdA);
-      expect(vault.method, LoginMethod.qr);
-      expect(vault.idleTimeout, const Duration(seconds: 300));
-      expect(attempt.isDestroyed, isTrue);
-      expect(attempt.keyPair.privateKey, everyElement(0));
-      verifyNever(() => api.logout());
-    });
+        final vault = session.require;
+        expect(vault.vaultKey, vaultKey);
+        expect(vault.itemKey, await crypto.deriveItemKey(vaultKey));
+        expect(vault.sessionId, sessionIdA);
+        expect(vault.method, LoginMethod.qr);
+        expect(vault.idleTimeout, const Duration(seconds: 300));
+        expect(attempt.isDestroyed, isTrue);
+        expect(attempt.keyPair.privateKey, everyElement(0));
+        verifyNever(() => api.logout());
+      },
+    );
 
     for (final (status, outcome) in [
       (QrStatus.rejected, QrPollOutcome.rejected),
@@ -217,9 +220,7 @@ void main() {
     test('a payload made for another session is refused and the '
         'session revoked', () async {
       final attempt = await repository.begin();
-      pollAnswers(
-        await approvalFor(attempt, forSid: bytesOf(sidSize, 0x99)),
-      );
+      pollAnswers(await approvalFor(attempt, forSid: bytesOf(sidSize, 0x99)));
 
       await expectLater(
         repository.poll(attempt),

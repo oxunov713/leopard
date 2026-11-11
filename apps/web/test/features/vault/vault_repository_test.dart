@@ -251,10 +251,7 @@ void main() {
     final subscription = server.sessionEnded.listen(ended.add);
     server.revokedWith = 'session_revoked';
 
-    await expectLater(
-      repository.sync(),
-      throwsA(isA<UnauthorizedException>()),
-    );
+    await expectLater(repository.sync(), throwsA(isA<UnauthorizedException>()));
     await Future<void>.delayed(Duration.zero);
     expect(ended.single.sessionEnded, isTrue);
     await subscription.cancel();

@@ -42,8 +42,7 @@ class _EmergencyLoginPageState extends State<EmergencyLoginPage> {
   }
 
   static String _phaseText(EmergencyLoginPhase? phase) => switch (phase) {
-    null ||
-    EmergencyLoginPhase.fetchingParameters => 'Contacting the server…',
+    null || EmergencyLoginPhase.fetchingParameters => 'Contacting the server…',
     EmergencyLoginPhase.derivingKey => 'Deriving the key from your password…',
     EmergencyLoginPhase.verifying => 'Checking with the server…',
   };
@@ -93,7 +92,8 @@ class _EmergencyLoginPageState extends State<EmergencyLoginPage> {
                   onSubmitted: (_) => _submit(),
                   decoration: const InputDecoration(
                     labelText: 'Authenticator code',
-                    helperText: '6 digits, from the app you set up with Leopard',
+                    helperText:
+                        '6 digits, from the app you set up with Leopard',
                   ),
                 ),
                 const SizedBox(height: 20),

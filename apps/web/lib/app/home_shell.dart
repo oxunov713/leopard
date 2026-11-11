@@ -126,45 +126,40 @@ class IdleLockWarning extends StatelessWidget {
   const IdleLockWarning({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      BlocBuilder<SessionCubit, SessionState>(
-        buildWhen: (before, after) =>
-            before.locksInSeconds != after.locksInSeconds,
-        builder: (context, state) {
-          final seconds = state.locksInSeconds;
-          if (seconds == null) {
-            return const SizedBox.shrink();
-          }
-          return Material(
-            key: const Key('idle-warning'),
-            color: LeopardColors.surfaceHigh,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+  Widget build(BuildContext context) => BlocBuilder<SessionCubit, SessionState>(
+    buildWhen: (before, after) => before.locksInSeconds != after.locksInSeconds,
+    builder: (context, state) {
+      final seconds = state.locksInSeconds;
+      if (seconds == null) {
+        return const SizedBox.shrink();
+      }
+      return Material(
+        key: const Key('idle-warning'),
+        color: LeopardColors.surfaceHigh,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.lock_clock_outlined,
+                  size: 18,
+                  color: LeopardColors.warning,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.lock_clock_outlined,
-                      size: 18,
-                      color: LeopardColors.warning,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        'No activity: locking in $seconds s',
-                        style: const TextStyle(color: LeopardColors.warning),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'No activity: locking in $seconds s',
+                    style: const TextStyle(color: LeopardColors.warning),
+                  ),
                 ),
-              ),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       );
+    },
+  );
 }

@@ -9,7 +9,11 @@
 /// Nothing is read from the page URL, from storage or from the server, so a
 /// link cannot point the app at another API.
 final class AppConfig {
-  const AppConfig._({this.apiUrl, this.allowInsecureHttp = false, this.problem});
+  const AppConfig._({
+    this.apiUrl,
+    this.allowInsecureHttp = false,
+    this.problem,
+  });
 
   /// The value compiled into this build.
   factory AppConfig.fromEnvironment() =>

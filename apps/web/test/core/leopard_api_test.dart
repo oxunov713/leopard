@@ -62,20 +62,23 @@ void main() {
     requests.clear();
   }
 
-  test('polling sends the poll token header and installs the session', () async {
-    expect(api.hasSession, isFalse);
-    respond = (_) => json(200, approvedBody());
+  test(
+    'polling sends the poll token header and installs the session',
+    () async {
+      expect(api.hasSession, isFalse);
+      respond = (_) => json(200, approvedBody());
 
-    final result = await api.pollQrSession(sid: sid, pollToken: pollToken);
+      final result = await api.pollQrSession(sid: sid, pollToken: pollToken);
 
-    expect(result, isA<QrPollApproved>());
-    final request = requests.single;
-    expect(request.method, 'GET');
-    expect(request.url.path, '/v1/qr/${base64UrlEncodeNoPad(sid)}');
-    expect(request.headers['X-Leopard-Poll-Token'], pollToken);
-    expect(request.headers.containsKey('Authorization'), isFalse);
-    expect(api.hasSession, isTrue);
-  });
+      expect(result, isA<QrPollApproved>());
+      final request = requests.single;
+      expect(request.method, 'GET');
+      expect(request.url.path, '/v1/qr/${base64UrlEncodeNoPad(sid)}');
+      expect(request.headers['X-Leopard-Poll-Token'], pollToken);
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      expect(api.hasSession, isTrue);
+    },
+  );
 
   test('item calls carry the bearer token', () async {
     await signIn();
@@ -110,10 +113,7 @@ void main() {
       final subscription = api.sessionEnded.listen(ended.add);
       respond = (_) => error(401, code);
 
-      await expectLater(
-        api.heartbeat(),
-        throwsA(isA<UnauthorizedException>()),
-      );
+      await expectLater(api.heartbeat(), throwsA(isA<UnauthorizedException>()));
       await Future<void>.delayed(Duration.zero);
 
       expect(ended.single.code, code);

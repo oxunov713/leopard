@@ -16,8 +16,7 @@ import 'vault_cubit.dart';
 
 /// Creates a new item of [type], or edits the item [id].
 class ItemEditPage extends StatefulWidget {
-  const ItemEditPage.create({super.key, required String this.type})
-    : id = null;
+  const ItemEditPage.create({super.key, required String this.type}) : id = null;
 
   const ItemEditPage.edit({super.key, required String this.id}) : type = null;
 
@@ -152,24 +151,26 @@ class _ItemEditPageState extends State<ItemEditPage> {
           ),
         ],
       ),
-      body: WideBody(child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        children: [
-          for (final spec in _specs) ...[
-            _field(spec),
-            const SizedBox(height: 14),
+      body: WideBody(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          children: [
+            for (final spec in _specs) ...[
+              _field(spec),
+              const SizedBox(height: 14),
+            ],
+            if (_type == CardItem.typeName)
+              const Text(
+                'The security code (CVV) is never stored.',
+                style: TextStyle(fontSize: 12, color: LeopardColors.textMuted),
+              ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              ErrorText(_error!),
+            ],
           ],
-          if (_type == CardItem.typeName)
-            const Text(
-              'The security code (CVV) is never stored.',
-              style: TextStyle(fontSize: 12, color: LeopardColors.textMuted),
-            ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            ErrorText(_error!),
-          ],
-        ],
-      )),
+        ),
+      ),
     );
   }
 

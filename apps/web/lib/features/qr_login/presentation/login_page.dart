@@ -67,36 +67,35 @@ class SignOutNotice extends StatelessWidget {
   const SignOutNotice({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      BlocBuilder<SessionCubit, SessionState>(
-        builder: (context, state) {
-          final text = describeSignOut(state.reason);
-          if (text == null) {
-            return const SizedBox.shrink();
-          }
-          return Container(
-            key: const Key('sign-out-notice'),
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(color: LeopardColors.brassDim),
-              borderRadius: BorderRadius.circular(6),
+  Widget build(BuildContext context) => BlocBuilder<SessionCubit, SessionState>(
+    builder: (context, state) {
+      final text = describeSignOut(state.reason);
+      if (text == null) {
+        return const SizedBox.shrink();
+      }
+      return Container(
+        key: const Key('sign-out-notice'),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: LeopardColors.brassDim),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.lock_clock_outlined,
+              size: 20,
+              color: LeopardColors.brass,
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.lock_clock_outlined,
-                  size: 20,
-                  color: LeopardColors.brass,
-                ),
-                const SizedBox(width: 12),
-                Expanded(child: Text(text)),
-              ],
-            ),
-          );
-        },
+            const SizedBox(width: 12),
+            Expanded(child: Text(text)),
+          ],
+        ),
       );
+    },
+  );
 }
 
 class _QrPanel extends StatelessWidget {
@@ -228,8 +227,10 @@ class _Placeholder extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) =>
-      SizedBox(height: _QrPanel._size, child: Center(child: child));
+  Widget build(BuildContext context) => SizedBox(
+    height: _QrPanel._size,
+    child: Center(child: child),
+  );
 }
 
 class _Ended extends StatelessWidget {
