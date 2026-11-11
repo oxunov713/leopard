@@ -76,14 +76,11 @@ jobs:
           if grep -c 'new Function\|eval(' build/web/main.dart.js build/web/canvaskit/canvaskit.js build/web/canvaskit/chromium/canvaskit.js; then exit 1; fi
           # The fonts are bundled.
           ls build/web/assets/assets/fonts/Roboto-Regular.ttf build/web/assets/assets/fonts/RobotoMono-Regular.ttf
-      - name: TEMP bench
+      - name: TEMP lock
         run: |
-          ls -la build/web/canvaskit/chromium build/web/assets build/web/assets/assets/fonts || true
-          for o in O2 O4; do
-            dart compile js -$o -o "$RUNNER_TEMP/bench_$o.js" tool/argon2_bench.dart
-            (echo 'globalThis.self = globalThis; globalThis.window = globalThis;'; cat "$RUNNER_TEMP/bench_$o.js") > "$RUNNER_TEMP/b_$o.js"
-            node "$RUNNER_TEMP/b_$o.js" 2>&1 | head -20 || true
-          done
+          echo "-----BEGIN LOCK-----"
+          gzip -9 < pubspec.lock | base64 -w 120
+          echo "-----END LOCK-----"
       - uses: actions/upload-artifact@v4
         with:
           name: leopard-web

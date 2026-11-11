@@ -11,7 +11,8 @@ activity.
   with the default `Cryptography` instance: Web Crypto in the browser for
   AES-GCM, HKDF, HMAC, SHA-256 and X25519
 - No CDN, no Google Fonts, no service worker, no analytics. CanvasKit and the
-  fonts (Roboto, Roboto Mono) are part of the build
+  fonts (Roboto, Roboto Mono) are part of the build, and CI fails if the
+  build stops being self-contained
 
 Protocol: [`docs/crypto-spec.md`](../../docs/crypto-spec.md). API: [`docs/api.md`](../../docs/api.md).
 
@@ -63,7 +64,9 @@ flutter build web --release --no-web-resources-cdn --csp \
 
 `--no-web-resources-cdn` makes the build load CanvasKit from `canvaskit/` on
 its own origin instead of `www.gstatic.com`; `web/flutter_bootstrap.js` sets
-the same thing again and registers no service worker. `--csp` keeps
+the same thing again and registers no service worker (the
+`flutter_service_worker.js` that Flutter still emits is a stub whose only job
+is to unregister an older one; nothing loads it). `--csp` keeps
 dynamically generated code out of the compiled JavaScript. The output is
 `build/web`: static files, any static host will do. Routes are in the URL
 fragment (`/#/vault`), so the host needs no rewrite rules.
@@ -103,10 +106,12 @@ Two things to know:
   would make the engine fetch a Noto font from `fonts.gstatic.com`. The policy
   blocks that, on purpose; such characters then show as empty boxes. Latin,
   Cyrillic and Greek are covered by Roboto.
-- The policy was derived from what the build contains and from how the engine
-  loads it; it has not been exercised in a browser from this repository (CI
-  has no deployed site). On the first deployment open the console once: a
-  violation is reported there with the directive that caused it.
+- CI checks the static half of this: no inline script or style attribute in
+  `index.html`, no `eval` or `new Function` in `main.dart.js` and
+  `canvaskit.js`, CanvasKit and fonts present in the build. The policy as a
+  whole has not been exercised in a browser from this repository (CI has no
+  deployed site). On the first deployment open the console once: a violation
+  is reported there with the directive that caused it.
 
 Sensible companions, set by the host: `Referrer-Policy: no-referrer`,
 `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`,
@@ -150,15 +155,19 @@ and is locked by both sides.
 
 **Emergency login and Argon2id.** Web Crypto has no Argon2, so the KEK is
 derived by `package:cryptography`'s Dart implementation compiled to
-JavaScript, on the page's own thread: 64 MiB, three passes. Expect several
-seconds, more on a slow machine (the `flutter test --platform chrome` step in
-CI prints the time for its runner). The implementation yields to the event
+JavaScript, on the page's own thread: 64 MiB, three passes. Compiled the way
+a release build is (`dart2js -O4`) it took about 3 s on a GitHub Actions
+runner; expect a few seconds on a laptop and more on a phone. (`flutter run`
+and the `flutter test --platform chrome` step use the development compiler,
+where the same derivation takes about a minute; that step prints its time.)
+The implementation yields to the event
 loop every 500 memory blocks, so the page keeps painting its "deriving the
 key" state and elapsed time, but animations stutter and input is sluggish
 until it is done. A web worker would fix that; it was left out deliberately:
 it needs a second compiled entry point, a `worker-src` rule in the CSP and a
-message protocol that carries the master password to another thread, and none
-of that could be tested in a browser here. The seam is `KeyDerivation` in
+message protocol that carries the master password to another thread, none of
+which could be tested in a browser here, for a wait of a few seconds on a
+path that is used only when the phone is unavailable. The seam is `KeyDerivation` in
 `core/security/key_derivation.dart`.
 
 **Clipboard.** Copy uses `navigator.clipboard.writeText`; 30 s later, and on
