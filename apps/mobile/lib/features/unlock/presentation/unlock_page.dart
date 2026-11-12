@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/widgets/feedback.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/secret_text_field.dart';
@@ -61,7 +61,7 @@ class _UnlockPageState extends State<UnlockPage> {
           return PageBody(
             children: [
               const SizedBox(height: 48),
-              const LeopardMark(subtitle: 'Vault locked'),
+              const BrandHeader(subtitle: 'Vault locked'),
               const SizedBox(height: 40),
               if (state.canUseDeviceLock) ...[
                 OutlinedButton.icon(
@@ -69,8 +69,8 @@ class _UnlockPageState extends State<UnlockPage> {
                   onPressed: state.busy
                       ? null
                       : cubit.unlockWithDeviceCredential,
-                  icon: const Icon(Icons.phonelink_lock),
-                  label: const Text('UNLOCK WITH SCREEN LOCK'),
+                  icon: const LeopardIcon(LeopardIcons.unlock, size: 20),
+                  label: const Text('Unlock with screen lock'),
                 ),
                 const SizedBox(height: 28),
                 const Row(
@@ -79,10 +79,9 @@ class _UnlockPageState extends State<UnlockPage> {
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'OR',
+                        'or',
                         style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 2,
+                          fontSize: 13,
                           color: LeopardColors.textMuted,
                         ),
                       ),
@@ -109,14 +108,14 @@ class _UnlockPageState extends State<UnlockPage> {
                 key: const Key('unlock-submit'),
                 onPressed: state.busy ? null : _submit,
                 child: Text(switch (state.status) {
-                  UnlockStatus.deriving => 'CHECKING…',
-                  UnlockStatus.authenticating => 'WAITING FOR SCREEN LOCK…',
-                  _ => 'UNLOCK WITH MASTER PASSWORD',
+                  UnlockStatus.deriving => 'Checking…',
+                  UnlockStatus.authenticating => 'Waiting for screen lock…',
+                  _ => 'Unlock with master password',
                 }),
               ),
               if (state.status == UnlockStatus.deriving) ...[
                 const SizedBox(height: 16),
-                const LinearProgressIndicator(minHeight: 2),
+                const LinearProgressIndicator(minHeight: 3),
               ],
               if (state.hasNoScreenLock) ...[
                 const SizedBox(height: 24),

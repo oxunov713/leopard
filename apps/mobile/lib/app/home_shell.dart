@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
 /// Bottom navigation around the four main sections.
 class HomeShell extends StatelessWidget {
@@ -18,18 +19,15 @@ class HomeShell extends StatelessWidget {
       ),
       destinations: const [
         NavigationDestination(
-          icon: Icon(Icons.lock_outline),
-          selectedIcon: Icon(Icons.lock),
+          icon: LeopardIcon(LeopardIcons.vault),
           label: 'Vault',
         ),
         NavigationDestination(
-          icon: Icon(Icons.casino_outlined),
-          selectedIcon: Icon(Icons.casino),
+          icon: LeopardIcon(LeopardIcons.generator),
           label: 'Generator',
         ),
         NavigationDestination(
-          icon: Icon(Icons.health_and_safety_outlined),
-          selectedIcon: Icon(Icons.health_and_safety),
+          icon: LeopardIcon(LeopardIcons.health),
           label: 'Health',
         ),
         NavigationDestination(

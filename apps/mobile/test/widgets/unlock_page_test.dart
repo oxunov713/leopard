@@ -40,9 +40,9 @@ void main() {
       'master password as an explicit option', (tester) async {
     await pump(tester, const UnlockState(deviceLock: DeviceLockStatus.secured));
     expect(find.byKey(const Key('unlock-device')), findsOneWidget);
-    expect(find.text('UNLOCK WITH SCREEN LOCK'), findsOneWidget);
+    expect(find.text('Unlock with screen lock'), findsOneWidget);
     expect(find.byKey(const Key('unlock-password')), findsOneWidget);
-    expect(find.text('UNLOCK WITH MASTER PASSWORD'), findsOneWidget);
+    expect(find.text('Unlock with master password'), findsOneWidget);
     expect(find.byKey(const Key('unlock-no-screen-lock')), findsNothing);
 
     await tester.tap(find.byKey(const Key('unlock-device')));
@@ -102,6 +102,6 @@ void main() {
           .onPressed,
       isNull,
     );
-    expect(find.text('CHECKING…'), findsOneWidget);
+    expect(find.text('Checking…'), findsOneWidget);
   });
 }

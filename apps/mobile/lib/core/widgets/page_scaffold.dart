@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../app/theme.dart';
-
-/// The Leopard wordmark shown on the setup and lock screens.
-class LeopardMark extends StatelessWidget {
-  const LeopardMark({super.key, this.subtitle});
+/// The Leopard mark and name shown on the setup and lock screens.
+class BrandHeader extends StatelessWidget {
+  const BrandHeader({super.key, this.subtitle});
 
   final String? subtitle;
 
@@ -12,29 +11,9 @@ class LeopardMark extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          border: Border.all(color: LeopardColors.brass, width: 1.5),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: const Icon(
-          Icons.lock_outline,
-          color: LeopardColors.brass,
-          size: 30,
-        ),
-      ),
+      const LeopardMark(size: 56),
       const SizedBox(height: 16),
-      const Text(
-        'LEOPARD',
-        style: TextStyle(
-          fontSize: 22,
-          letterSpacing: 6,
-          fontWeight: FontWeight.w600,
-          color: LeopardColors.text,
-        ),
-      ),
+      Text('Leopard', style: Theme.of(context).textTheme.headlineLarge),
       if (subtitle != null) ...[
         const SizedBox(height: 6),
         Text(
@@ -44,6 +23,22 @@ class LeopardMark extends StatelessWidget {
         ),
       ],
     ],
+  );
+}
+
+/// A large page title, as on the main tabs.
+class LargeTitle extends StatelessWidget {
+  const LargeTitle(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontSize: 34),
+    ),
   );
 }
 
@@ -67,7 +62,7 @@ class PageBody extends StatelessWidget {
   );
 }
 
-/// A bordered panel.
+/// A rounded surface card.
 class Panel extends StatelessWidget {
   const Panel({super.key, required this.child, this.padding});
 
@@ -77,12 +72,33 @@ class Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    padding: padding ?? const EdgeInsets.all(16),
+    padding: padding ?? const EdgeInsets.all(18),
     decoration: BoxDecoration(
       color: LeopardColors.surface,
-      border: Border.all(color: LeopardColors.outline),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(20),
     ),
     child: child,
+  );
+}
+
+/// Rows grouped in one surface card and separated by dividers.
+class CardGroup extends StatelessWidget {
+  const CardGroup({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: LeopardColors.surface,
+    borderRadius: BorderRadius.circular(20),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      children: [
+        for (final (index, child) in children.indexed) ...[
+          if (index > 0) const Divider(),
+          child,
+        ],
+      ],
+    ),
   );
 }

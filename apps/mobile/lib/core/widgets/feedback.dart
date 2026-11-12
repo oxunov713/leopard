@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../app/theme.dart';
 import '../security/secret_clipboard.dart';
 
 void showMessage(BuildContext context, String message) {
@@ -53,14 +53,14 @@ class SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+    padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
     child: Text(
       text.toUpperCase(),
       style: const TextStyle(
-        fontSize: 11,
-        letterSpacing: 1.6,
+        fontSize: 12,
+        letterSpacing: 1,
         fontWeight: FontWeight.w600,
-        color: LeopardColors.brass,
+        color: LeopardColors.textMuted,
       ),
     ),
   );

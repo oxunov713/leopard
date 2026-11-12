@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../../app/theme.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
 /// A text field for a secret.
 ///
@@ -55,7 +54,7 @@ class _SecretTextFieldState extends State<SecretTextField> {
       enabled: widget.enabled,
       autofocus: widget.autofocus,
       obscureText: obscure,
-      style: secretTextStyle,
+      style: leopardSecretTextStyle,
       minLines: widget.multiline ? 3 : 1,
       maxLines: widget.multiline ? 8 : 1,
       maxLength: widget.maxLength,
@@ -83,10 +82,11 @@ class _SecretTextFieldState extends State<SecretTextField> {
             ? null
             : IconButton(
                 tooltip: _revealed ? 'Hide' : 'Show',
-                icon: Icon(
-                  _revealed
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
+                icon: LeopardIcon(
+                  LeopardIcons.eye,
+                  color: _revealed
+                      ? LeopardColors.primary
+                      : LeopardColors.textMuted,
                 ),
                 onPressed: () => setState(() => _revealed = !_revealed),
               ),

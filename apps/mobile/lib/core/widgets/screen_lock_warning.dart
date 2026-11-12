@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../app/theme.dart';
 import '../security/device_authenticator.dart';
+import 'tokens.dart';
 
 /// A notice that shows only on a phone without a screen lock.
 ///
@@ -32,15 +33,19 @@ class _ScreenLockWarningState extends State<ScreenLockWarning> {
       return Container(
         key: const Key('screen-lock-warning'),
         margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          border: Border.all(color: LeopardColors.brass),
-          borderRadius: BorderRadius.circular(8),
+          color: noticeBackground,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: const Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.warning_amber_rounded, color: LeopardColors.brass),
+            LeopardIcon(
+              LeopardIcons.shieldAlert,
+              size: 20,
+              color: LeopardColors.primary,
+            ),
             SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -49,6 +54,7 @@ class _ScreenLockWarningState extends State<ScreenLockWarning> {
                 'login, and the vault is only as safe as the phone is '
                 'physically. Set a PIN, pattern or password in Android '
                 'settings (a fingerprint or face is optional).',
+                style: TextStyle(color: noticeText, fontSize: 13, height: 1.5),
               ),
             ),
           ],

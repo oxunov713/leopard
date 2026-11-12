@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leopard_core/leopard_core.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/error/failures.dart';
 import '../../../core/widgets/feedback.dart';
 import '../../../core/widgets/secret_text_field.dart';
 import '../domain/item_form.dart';
 import '../domain/vault_entry.dart';
 import 'conflict_dialog.dart';
+import 'item_presentation.dart';
 import 'vault_cubit.dart';
 
 /// Creates a new item of [type], or edits the item [id].
@@ -106,7 +107,7 @@ class _ItemEditPageState extends State<ItemEditPage> {
         message:
             'This item was deleted somewhere else while you were editing '
             'it. Save what you typed as a new item?',
-        confirmLabel: 'SAVE AS NEW',
+        confirmLabel: 'Save as new',
       );
       result = again ? await cubit.create(item) : SaveResult.saved;
     }
@@ -142,20 +143,24 @@ class _ItemEditPageState extends State<ItemEditPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${_base == null ? 'NEW' : 'EDIT'} '
-          '${itemTypeLabel(_type).toUpperCase()}',
+          '${_base == null ? 'New' : 'Edit'} ${itemTypeLabel(_type)}',
         ),
         actions: [
           TextButton(
             key: const Key('item-save'),
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'SAVING…' : 'SAVE'),
+            child: Text(_saving ? 'Saving…' : 'Save'),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Center(child: itemIcon(_type, size: 64)),
+          ),
           for (final spec in _specs) ...[
             _field(spec),
             const SizedBox(height: 14),
@@ -215,10 +220,14 @@ class _ItemEditPageState extends State<ItemEditPage> {
       return Row(
         children: [
           Expanded(child: field),
+          const SizedBox(width: 4),
           IconButton(
             key: const Key('edit-generate'),
             tooltip: 'Generate password',
-            icon: const Icon(Icons.casino_outlined),
+            icon: const LeopardIcon(
+              LeopardIcons.generator,
+              color: LeopardColors.primary,
+            ),
             onPressed: _saving ? null : () => _generatePassword(spec.key),
           ),
         ],
