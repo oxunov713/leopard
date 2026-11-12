@@ -150,7 +150,104 @@ gcloud run services update leopard-api --region="$REGION" --remove-secrets=LEOPA
 - **Start over (destroys the vault):** drop all tables in the Neon SQL editor
   (`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`) and redeploy.
 
-## 8. Cost notes
+## 8. Web (Netlify)
+
+The web app (`apps/web`, Flutter Web) is a static site on **Netlify**'s free
+tier. It is built outside Netlify (its build image has no Flutter) and the
+prebuilt `build/web` directory is uploaded. `apps/web/netlify.toml` holds the
+publish directory, security headers and caching rules. It is only read when
+you deploy **from `apps/web`**, so every command below runs there.
+
+### 8.1 Build
+
+From the repository root, with the Cloud Run URL from step 5:
+
+```sh
+cd apps/web
+flutter build web --release --no-web-resources-cdn --csp \
+  --dart-define=LEOPARD_API_URL=https://<cloud-run-host>
+```
+
+`--no-web-resources-cdn` bundles CanvasKit into `build/web/canvaskit/`, so the
+page never loads code from a third-party CDN (the CSP forbids it). `--csp`
+builds without `eval`/`new Function`, which is what CI checks against
+`script-src 'self'`; a build without it is not the build CI verified.
+
+### 8.2 Create the site and deploy
+
+Do not let Netlify build the repository. Create an empty site and push the
+prebuilt directory:
+
+```sh
+npm install -g netlify-cli
+netlify login
+netlify sites:create --name YOUR-SITE-NAME     # note the site ID
+cd apps/web
+netlify deploy --prod --dir=build/web --site=NETLIFY_SITE_ID
+```
+
+`netlify.toml` is read from the directory you run the command in. Running it
+from the repository root publishes the site **without** CSP, HSTS and the other
+headers, so always deploy from `apps/web`.
+
+For non-interactive use (CI, or deploying a downloaded GitHub Actions
+artifact), set a personal access token and the site ID instead of logging in:
+
+```sh
+export NETLIFY_AUTH_TOKEN=...     # User settings > Applications > Personal access tokens
+export NETLIFY_SITE_ID=...        # Site configuration > Site ID
+cd apps/web
+netlify deploy --prod --dir=build/web
+```
+
+For the Actions artifact: download it, unzip it into `apps/web/build/web`, and
+run the same command. Store the token and site ID as repository secrets
+(`NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`); never commit them. Linking the
+private repository in the Netlify UI is possible but not recommended: Netlify
+would try to build it and fail without Flutter.
+
+### 8.3 Allow the web origin on the API
+
+Set `LEOPARD_WEB_ORIGIN` on Cloud Run to the **exact** site origin:
+`https://YOUR-SITE-NAME.netlify.app` or your custom domain, with no path and no
+trailing slash. Comma-separate several.
+
+```sh
+gcloud run services update leopard-api --region="$REGION" \
+  --update-env-vars=LEOPARD_WEB_ORIGIN=https://YOUR-SITE-NAME.netlify.app
+```
+
+### 8.4 Fill in the CSP placeholder
+
+In `apps/web/netlify.toml`, replace `https://LEOPARD_API_HOST` in `connect-src`
+with the Cloud Run origin (for example `https://leopard-api-xxxx-uc.a.run.app`),
+then redeploy. The policy is a starting point: if the browser console reports a
+blocked resource, widen only that directive and only as far as needed.
+
+### 8.5 Verify
+
+```sh
+curl -sI https://YOUR-SITE-NAME.netlify.app/ | grep -i -E \
+  'content-security-policy|strict-transport|x-content-type|referrer-policy|x-frame|cross-origin|permissions-policy|cache-control'
+curl -sI https://YOUR-SITE-NAME.netlify.app/main.dart.js | grep -i cache-control   # no-cache
+# CORS: an allowed origin gets 204, any other origin is refused with 403.
+curl -si -X OPTIONS "$URL/v1/setup" -H 'Origin: https://YOUR-SITE-NAME.netlify.app' \
+  -H 'Access-Control-Request-Method: POST' | head -5
+curl -si "$URL/healthz" -H 'Origin: https://evil.example' | head -1
+```
+
+Checklist:
+
+- [ ] `Strict-Transport-Security` present (Netlify serves HTTPS only).
+- [ ] CSP header present and the placeholder `LEOPARD_API_HOST` is gone.
+- [ ] Browser console shows no CSP violations while loading, logging in and copying a password.
+- [ ] A request from any other `Origin` is rejected by the API (`403 origin_not_allowed`).
+- [ ] `index.html`, `main.dart.js` and `canvaskit/*` return `Cache-Control: no-cache`
+      (Flutter does not hash file names, so nothing is cached without revalidation).
+- [ ] The app uses hash routes (`/#/...`); there is no SPA fallback, so an unknown
+      path such as `/nope` returns 404.
+
+## 9. Cost notes
 
 Cloud Run's free tier covers 2 million requests and 180,000 vCPU-seconds per
 month in `us-central1`; a personal password manager uses a tiny fraction.

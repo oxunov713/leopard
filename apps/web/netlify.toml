@@ -1,0 +1,52 @@
+# Netlify configuration for the Leopard web app (Flutter Web).
+#
+# The app is built in GitHub Actions (or locally), NOT on Netlify: Netlify's
+# build image has no Flutter SDK. Deploy the prebuilt directory FROM THIS
+# DIRECTORY (apps/web), otherwise Netlify does not read this file and the site
+# goes live without its security headers:
+#   cd apps/web && netlify deploy --prod --dir=build/web
+# See docs/deploy.md, section "Web (Netlify)".
+
+[build]
+  # Prebuilt Flutter output (`flutter build web --release --no-web-resources-cdn --csp`).
+  # No build command on purpose.
+  publish = "build/web"
+
+# ---------------------------------------------------------------------------
+# Security headers and caching (all paths)
+# ---------------------------------------------------------------------------
+# OWNER ACTION: replace https://LEOPARD_API_HOST in connect-src with the exact
+# Cloud Run origin (https://leopard-api-xxxx-uc.a.run.app, no trailing slash).
+# Until then every API call is blocked (fails closed).
+#
+# The CSP matches what apps/web/README.md says the build needs; widen it only
+# as far as a real CSP report in the browser console requires.
+# - script-src 'wasm-unsafe-eval': CanvasKit is WebAssembly. Plain
+#   'unsafe-eval' is NOT granted (the build uses --csp).
+# - style-src 'unsafe-inline': the Flutter engine injects <style> elements at
+#   runtime and a static host cannot supply a nonce.
+# - base-uri 'self': index.html uses <base href="/">; 'none' would make the
+#   browser ignore it.
+# - No worker-src / blob: / data: — the app has no workers, no service worker
+#   and loads no images.
+# - Permissions-Policy blocks clipboard-read only; the app needs clipboard-write.
+#
+# Caching: Flutter does not content-hash its output (main.dart.js, /assets/*,
+# /canvaskit/* keep their names between builds), so everything is revalidated
+# on every load ("no-cache" still allows the ETag 304 path). Otherwise a new
+# main.dart.js could start against a cached old CanvasKit or asset manifest.
+#
+# No SPA fallback: the app uses hash routing (/#/...), so missing files should
+# stay 404 instead of being answered with index.html.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://LEOPARD_API_HOST; manifest-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-Frame-Options = "DENY"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), clipboard-read=()"
+    Cache-Control = "no-cache"
