@@ -65,7 +65,12 @@ A phone restored with the recovery key builds its own `wrapped_vk_master`:
 `register-device` returns the salt and Argon2id parameters but not the
 server's `wrapped_vk_master`, so the phone derives the KEK from the master
 password typed during restore and wraps the recovered VK under it with a
-fresh nonce. The phone cannot check that password against the server (there
+fresh nonce. The salt and parameters come from `GET /v1/auth/master/params`
+and the KEK is derived *before* `register-device` (which revokes every other
+device), so only cheap steps remain after it; the app aborts if the
+parameters `register-device` returns differ. If anything still fails after
+the server accepted the key, the app says that the other devices were signed
+out and that restoring again with the same recovery key is safe. The phone cannot check that password against the server (there
 is no endpoint for it without TOTP), so it is asked twice; a wrong one would
 only affect this phone's master-password fallback, never the server or the
 web login.

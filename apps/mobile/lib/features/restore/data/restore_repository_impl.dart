@@ -59,7 +59,15 @@ final class RestoreRepositoryImpl implements RestoreRepository {
         );
       }
 
-      // 2. Everything derived from the recovery key, then the key is gone.
+      // 2. Everything slow or fallible happens before the server is asked:
+      //    the KEK of the master password (Argon2id, 64 MiB) with the
+      //    vault's own salt and parameters, and the new device key.
+      final params = await client.masterParams();
+      kek = await _keyDerivation.deriveKek(
+        masterPassword: masterPassword,
+        salt: params.salt,
+        params: params.kdfParams,
+      );
       deviceKey = await _crypto.generateEd25519KeyPair();
       proof = await _crypto.recoveryAuthKey(recoveryKey);
       recoveryKek = await _crypto.recoveryKek(recoveryKey);
@@ -74,54 +82,57 @@ final class RestoreRepositoryImpl implements RestoreRepository {
       );
       wipe(proof);
 
-      // 4. VK from the recovery wrap.
-      vaultKey = await _crypto.unwrapVaultKey(
-        kek: recoveryKek,
-        wrapped: result.wrappedVkRecovery,
-        label: WrapLabel.recovery,
-      );
-      wipe(recoveryKek);
-
-      // 5. The master-password fallback needs VK wrapped under the KEK. The
-      //    server keeps its own copy and does not send it; this one has a
-      //    fresh nonce but the same key, salt and parameters.
-      kek = await _keyDerivation.deriveKek(
-        masterPassword: masterPassword,
-        salt: result.salt,
-        params: result.kdfParams,
-      );
-      final wrappedVkMaster = await _crypto.wrapVaultKey(
-        kek: kek,
-        vaultKey: vaultKey,
-        label: WrapLabel.master,
-      );
-      wipe(kek);
-
-      // 6. Store as setup does: secrets first, the registration (which marks
-      //    the phone as set up) last.
-      final secrets = DeviceSecrets(
-        vaultKey: Uint8List.fromList(vaultKey),
-        deviceSeed: Uint8List.fromList(deviceKey.seed),
-      );
+      // 4. Only cheap steps are left. A failure now leaves the other devices
+      //    signed out, which the user must be told.
       try {
-        await _store.saveSecrets(
-          secrets: secrets,
-          masterMaterial: MasterUnlockMaterial(
-            wrappedVaultKey: wrappedVkMaster,
-            salt: result.salt,
-            kdfParams: result.kdfParams,
+        if (result.kdfParams != params.kdfParams ||
+            !constantTimeEquals(result.salt, params.salt)) {
+          throw const ValidationFailure(
+            'The server reported two different key parameters.',
+          );
+        }
+        vaultKey = await _crypto.unwrapVaultKey(
+          kek: recoveryKek,
+          wrapped: result.wrappedVkRecovery,
+          label: WrapLabel.recovery,
+        );
+        // The master-password fallback needs VK wrapped under the KEK. The
+        // server keeps its own copy and does not send it; this one has a
+        // fresh nonce but the same key, salt and parameters.
+        final wrappedVkMaster = await _crypto.wrapVaultKey(
+          kek: kek,
+          vaultKey: vaultKey,
+          label: WrapLabel.master,
+        );
+
+        // 5. Store as setup does: secrets first, the registration (which
+        //    marks the phone as set up) last.
+        final secrets = DeviceSecrets(
+          vaultKey: Uint8List.fromList(vaultKey),
+          deviceSeed: Uint8List.fromList(deviceKey.seed),
+        );
+        try {
+          await _store.saveSecrets(
+            secrets: secrets,
+            masterMaterial: MasterUnlockMaterial(
+              wrappedVaultKey: wrappedVkMaster,
+              salt: params.salt,
+              kdfParams: params.kdfParams,
+            ),
+          );
+        } finally {
+          secrets.destroy();
+        }
+        await _store.saveRegistration(
+          DeviceRegistration(
+            serverUrl: serverUrl,
+            deviceId: result.deviceId,
+            deviceLabel: deviceLabel,
           ),
         );
-      } finally {
-        secrets.destroy();
+      } on Object catch (e) {
+        throw RestoreIncompleteFailure(e);
       }
-      await _store.saveRegistration(
-        DeviceRegistration(
-          serverUrl: serverUrl,
-          deviceId: result.deviceId,
-          deviceLabel: deviceLabel,
-        ),
-      );
     } finally {
       wipeAll([recoveryKey, proof, recoveryKek, vaultKey, kek]);
       deviceKey?.destroy();

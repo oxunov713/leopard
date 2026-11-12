@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:leopard_core/leopard_core.dart';
 import 'package:leopard_mobile/core/error/failures.dart';
+import 'package:leopard_mobile/features/restore/domain/restore_repository.dart';
 import 'package:leopard_mobile/features/restore/presentation/restore_cubit.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -293,6 +294,14 @@ void main() {
         await errorFor(const ValidationFailure('No Leopard server here.')),
         'No Leopard server here.',
       );
+    });
+
+    test('post-register failure: others out, retry is safe', () async {
+      final message = await errorFor(
+        const RestoreIncompleteFailure(StorageFailure()),
+      );
+      expect(message, contains('signed out every other phone'));
+      expect(message, contains('again with the same recovery key is safe'));
     });
 
     test('a vault key that does not open', () async {

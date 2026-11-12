@@ -15,6 +15,7 @@ import 'package:leopard_mobile/core/security/key_derivation.dart';
 import 'package:leopard_mobile/core/session/vault_session.dart';
 import 'package:leopard_mobile/core/storage/device_store.dart';
 import 'package:leopard_mobile/features/restore/data/restore_repository_impl.dart';
+import 'package:leopard_mobile/features/restore/domain/restore_repository.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -44,6 +45,10 @@ void main() {
   late MockKeyDerivation keyDerivation;
   late List<http.Request> requests;
   late http.Response Function(http.Request) respond;
+  late http.Response Function() masterParams;
+
+  /// How many requests had been made when the KEK was derived.
+  late List<int> derivedAfterRequests;
 
   RestoreRepositoryImpl build() => RestoreRepositoryImpl(
     store: store,
@@ -67,7 +72,8 @@ void main() {
     'salt': base64UrlEncodeNoPad(salt),
   };
 
-  /// A healthy server that answers register-device with [register].
+  /// A healthy server with the vault's KDF parameters that answers
+  /// register-device with [register].
   http.Response Function(http.Request) server(
     http.Response Function() register,
   ) {
@@ -75,9 +81,16 @@ void main() {
       if (request.url.path == '/healthz') {
         return json(200, {'status': 'ok'});
       }
+      if (request.url.path == '/v1/auth/master/params') {
+        return masterParams();
+      }
       return register();
     };
   }
+
+  bool registerWasCalled() => requests.any(
+    (request) => request.url.path == '/v1/recovery/register-device',
+  );
 
   setUpAll(() async {
     registerFallbackValue(Uri.parse('https://fallback.example'));
@@ -110,8 +123,16 @@ void main() {
         salt: any(named: 'salt'),
         params: any(named: 'params'),
       ),
-    ).thenAnswer((_) async => Uint8List.fromList(kek));
+    ).thenAnswer((_) async {
+      derivedAfterRequests.add(requests.length);
+      return Uint8List.fromList(kek);
+    });
+    derivedAfterRequests = [];
     requests = [];
+    masterParams = () => json(200, {
+      'kdf_params': KdfParams.v1.toJson(),
+      'salt': base64UrlEncodeNoPad(salt),
+    });
     respond = server(() => json(201, registered()));
   });
 
@@ -127,9 +148,13 @@ void main() {
     final key = Uint8List.fromList(recoveryKey);
     await restore(key);
 
-    // The request.
-    expect(requests, hasLength(2));
-    expect(requests.first.url.path, '/healthz');
+    // The requests, and the slow KDF before the irreversible one.
+    expect(requests.map((r) => r.url.path), [
+      '/healthz',
+      '/v1/auth/master/params',
+      '/v1/recovery/register-device',
+    ]);
+    expect(derivedAfterRequests, [2]);
     final request = requests.last;
     expect(request.method, 'POST');
     expect(
@@ -203,7 +228,8 @@ void main() {
     }
   });
 
-  test('401 invalid_credentials: nothing stored, key wiped', () async {
+  test('401 invalid_credentials: nothing stored, key wiped, and not '
+      'reported as a half-finished restore', () async {
     final refused = json(401, {
       'error': {'code': 'invalid_credentials', 'message': 'invalid'},
     });
@@ -225,6 +251,34 @@ void main() {
     expect(await store.readRegistration(), isNull);
     expect(session.isUnlocked, isFalse);
     expect(key, everyElement(0));
+  });
+
+  test('a KDF failure stops before the server is asked', () async {
+    when(
+      () => keyDerivation.deriveKek(
+        masterPassword: any(named: 'masterPassword'),
+        salt: any(named: 'salt'),
+        params: any(named: 'params'),
+      ),
+    ).thenThrow(StateError('isolate died'));
+    final key = Uint8List.fromList(recoveryKey);
+
+    await expectLater(restore(key), throwsA(isA<StateError>()));
+    expect(registerWasCalled(), isFalse);
+    expect(keyValues.values, isEmpty);
+    expect(key, everyElement(0));
+  });
+
+  test('master params missing: stops before the server is asked', () async {
+    masterParams = () => json(404, {
+      'error': {'code': 'not_initialised', 'message': 'no vault'},
+    });
+
+    await expectLater(
+      restore(Uint8List.fromList(recoveryKey)),
+      throwsA(isA<NotFoundException>()),
+    );
+    expect(registerWasCalled(), isFalse);
     verifyNever(
       () => keyDerivation.deriveKek(
         masterPassword: any(named: 'masterPassword'),
@@ -232,6 +286,24 @@ void main() {
         params: any(named: 'params'),
       ),
     );
+  });
+
+  test('a different salt from register-device: incomplete', () async {
+    final otherSalt = base64UrlEncodeNoPad(bytesOf(saltSize, 0x55));
+    respond = server(() => json(201, {...registered(), 'salt': otherSalt}));
+
+    await expectLater(
+      restore(Uint8List.fromList(recoveryKey)),
+      throwsA(
+        isA<RestoreIncompleteFailure>().having(
+          (e) => e.cause,
+          'cause',
+          isA<ValidationFailure>(),
+        ),
+      ),
+    );
+    expect(keyValues.values, isEmpty);
+    expect(session.isUnlocked, isFalse);
   });
 
   test('429 rate_limited carries Retry-After', () async {
@@ -285,13 +357,19 @@ void main() {
 
     await expectLater(
       restore(Uint8List.fromList(recoveryKey)),
-      throwsA(isA<DecryptException>()),
+      throwsA(
+        isA<RestoreIncompleteFailure>().having(
+          (e) => e.cause,
+          'cause',
+          isA<DecryptException>(),
+        ),
+      ),
     );
     expect(keyValues.values, isEmpty);
     expect(session.isUnlocked, isFalse);
   });
 
-  test('a storage failure is reported and the vault stays closed', () async {
+  test('storage failure after register-device: incomplete', () async {
     final failing = MockDeviceStore();
     registerFallbackValue(
       DeviceSecrets(vaultKey: Uint8List(0), deviceSeed: Uint8List(0)),
@@ -328,7 +406,13 @@ void main() {
         recoveryKey: Uint8List.fromList(recoveryKey),
         masterPassword: password,
       ),
-      throwsA(isA<StorageFailure>()),
+      throwsA(
+        isA<RestoreIncompleteFailure>().having(
+          (e) => e.cause,
+          'cause',
+          isA<StorageFailure>(),
+        ),
+      ),
     );
     expect(session.isUnlocked, isFalse);
   });
