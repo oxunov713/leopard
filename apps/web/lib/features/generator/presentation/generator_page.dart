@@ -61,7 +61,10 @@ class GeneratorPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SelectableText(
+                    // Plain Text on purpose: a selectable value could be
+                    // copied with Ctrl+C, bypassing the 30 s clipboard clear
+                    // of the COPY button.
+                    Text(
                       state.value,
                       key: const Key('generator-value'),
                       style: secretTextStyle.copyWith(fontSize: 19),

@@ -137,13 +137,21 @@ class VaultCubit extends Cubit<VaultState> {
   String? _cursor;
   final Set<String> _unreadable = {};
 
+  /// Bumped by [clear]. A request that started under an older generation
+  /// must not put its (decrypted) result back into memory after the session
+  /// ended (crypto-spec §11).
+  int _generation = 0;
+
+  bool _isStale(int generation) => isClosed || generation != _generation;
+
   /// Full sync, replacing whatever is in memory. Called after login.
   Future<void> load() async {
     if (state.status == VaultStatus.loading) return;
+    final generation = _generation;
     emit(state.copyWith(status: VaultStatus.loading, error: () => null));
     try {
       final delta = await _repository.sync();
-      if (isClosed) return;
+      if (_isStale(generation)) return;
       _cursor = delta.serverTime;
       _unreadable
         ..clear()
@@ -156,7 +164,7 @@ class VaultCubit extends Cubit<VaultState> {
         ),
       );
     } on Object catch (e) {
-      if (isClosed) return;
+      if (_isStale(generation)) return;
       emit(
         state.copyWith(
           status: VaultStatus.failure,
@@ -172,10 +180,11 @@ class VaultCubit extends Cubit<VaultState> {
       return load();
     }
     if (state.syncing) return;
+    final generation = _generation;
     emit(state.copyWith(syncing: true, error: () => null));
     try {
       final delta = await _repository.sync(since: _cursor);
-      if (isClosed) return;
+      if (_isStale(generation)) return;
       _cursor = delta.serverTime;
       final byId = {for (final entry in state.entries) entry.id: entry};
       for (final entry in delta.upserts) {
@@ -201,7 +210,7 @@ class VaultCubit extends Cubit<VaultState> {
         ),
       );
     } on Object catch (e) {
-      if (isClosed) return;
+      if (_isStale(generation)) return;
       emit(state.copyWith(syncing: false, error: () => describeError(e)));
     }
   }
@@ -211,27 +220,27 @@ class VaultCubit extends Cubit<VaultState> {
   void setTypeFilter(String? type) =>
       emit(state.copyWith(typeFilter: () => type));
 
-  Future<SaveResult> create(VaultItem item) => _write(() async {
+  Future<SaveResult> create(VaultItem item) => _write((generation) async {
     final entry = await _repository.create(item);
-    _put(entry);
+    _put(entry, generation);
   });
 
   Future<SaveResult> update(VaultEntry base, VaultItem item) => _write(
-    () async {
+    (generation) async {
       final entry = await _repository.update(
         id: base.id,
         baseVersion: base.version,
         item: item,
       );
-      _put(entry);
+      _put(entry, generation);
     },
     id: base.id,
     mine: item,
   );
 
-  Future<SaveResult> delete(VaultEntry entry) => _write(() async {
+  Future<SaveResult> delete(VaultEntry entry) => _write((generation) async {
     await _repository.delete(id: entry.id, baseVersion: entry.version);
-    _remove(entry.id);
+    _remove(entry.id, generation);
   }, id: entry.id);
 
   /// Conflict answer "keep mine": write my version on top of the server's
@@ -242,20 +251,20 @@ class VaultCubit extends Cubit<VaultState> {
     final mine = conflict.mine;
     emit(state.copyWith(conflict: () => null));
     return _write(
-      () async {
+      (generation) async {
         if (mine == null) {
           await _repository.delete(
             id: conflict.id,
             baseVersion: conflict.serverVersion,
           );
-          _remove(conflict.id);
+          _remove(conflict.id, generation);
         } else {
           final entry = await _repository.update(
             id: conflict.id,
             baseVersion: conflict.serverVersion,
             item: mine,
           );
-          _put(entry);
+          _put(entry, generation);
         }
       },
       id: conflict.id,
@@ -271,7 +280,7 @@ class VaultCubit extends Cubit<VaultState> {
     final server = conflict.server;
     emit(state.copyWith(conflict: () => null));
     if (server != null) {
-      _put(server);
+      _put(server, _generation);
     } else {
       // The server's copy could not be read here; fetch whatever changed.
       await refresh();
@@ -280,22 +289,25 @@ class VaultCubit extends Cubit<VaultState> {
 
   /// Drops every decrypted item. Called when the session ends.
   void clear() {
+    _generation++;
     _cursor = null;
     _unreadable.clear();
     emit(const VaultState());
   }
 
   Future<SaveResult> _write(
-    Future<void> Function() action, {
+    Future<void> Function(int generation) action, {
     String? id,
     VaultItem? mine,
   }) async {
+    final generation = _generation;
     emit(state.copyWith(error: () => null));
     try {
-      await action();
+      await action(generation);
+      if (_isStale(generation)) return SaveResult.failed;
       return SaveResult.saved;
     } on VaultConflict catch (conflict) {
-      if (isClosed) return SaveResult.failed;
+      if (_isStale(generation)) return SaveResult.failed;
       emit(
         state.copyWith(
           conflict: () => PendingConflict(
@@ -308,18 +320,18 @@ class VaultCubit extends Cubit<VaultState> {
       );
       return SaveResult.conflict;
     } on ItemDeletedRemotely catch (gone) {
-      if (isClosed) return SaveResult.failed;
-      _remove(gone.id);
+      if (_isStale(generation)) return SaveResult.failed;
+      _remove(gone.id, generation);
       return SaveResult.deletedRemotely;
     } on Object catch (e) {
-      if (isClosed) return SaveResult.failed;
+      if (_isStale(generation)) return SaveResult.failed;
       emit(state.copyWith(error: () => describeError(e)));
       return SaveResult.failed;
     }
   }
 
-  void _put(VaultEntry entry) {
-    if (isClosed) return;
+  void _put(VaultEntry entry, int generation) {
+    if (_isStale(generation)) return;
     emit(
       state.copyWith(
         entries: [
@@ -331,8 +343,8 @@ class VaultCubit extends Cubit<VaultState> {
     );
   }
 
-  void _remove(String id) {
-    if (isClosed) return;
+  void _remove(String id, int generation) {
+    if (_isStale(generation)) return;
     emit(
       state.copyWith(
         entries: [

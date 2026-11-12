@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:leopard_core/leopard_core.dart';
 import 'package:leopard_web/features/vault/domain/vault_entry.dart';
@@ -331,5 +333,46 @@ void main() {
       ..clear();
     expect(cubit.state, const VaultState());
     await cubit.close();
+  });
+
+  group('lock while a request is in flight', () {
+    test('a full sync that finishes after clear() is dropped', () async {
+      final pending = Completer<SyncDelta>();
+      when(() => repository.sync()).thenAnswer((_) => pending.future);
+      final cubit = build();
+      final loading = cubit.load();
+      cubit.clear();
+      pending.complete(delta(upserts: [alpha, bravo]));
+      await loading;
+      expect(cubit.state, const VaultState());
+      await cubit.close();
+    });
+
+    test('a refresh that finishes after clear() is dropped', () async {
+      final cubit = await loaded([alpha]);
+      final pending = Completer<SyncDelta>();
+      when(
+        () => repository.sync(since: any(named: 'since')),
+      ).thenAnswer((_) => pending.future);
+      final refreshing = cubit.refresh();
+      cubit.clear();
+      pending.complete(delta(upserts: [bravo]));
+      await refreshing;
+      expect(cubit.state, const VaultState());
+      await cubit.close();
+    });
+
+    test('a save that finishes after clear() is dropped', () async {
+      final cubit = await loaded([alpha]);
+      final item = login('Charlie');
+      final pending = Completer<VaultEntry>();
+      when(() => repository.create(item)).thenAnswer((_) => pending.future);
+      final saving = cubit.create(item);
+      cubit.clear();
+      pending.complete(entry(itemIdC, item));
+      expect(await saving, SaveResult.failed);
+      expect(cubit.state, const VaultState());
+      await cubit.close();
+    });
   });
 }

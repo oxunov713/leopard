@@ -252,7 +252,7 @@ void main() {
     await tester.tap(find.text('Generator'));
     await settle(tester);
     final generated = tester
-        .widget<SelectableText>(find.byKey(const Key('generator-value')))
+        .widget<Text>(find.byKey(const Key('generator-value')))
         .data!;
     expect(generated, hasLength(20));
 
