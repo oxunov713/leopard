@@ -34,8 +34,13 @@ class SetupPage extends StatelessWidget {
             !state.busy &&
             state.step != SetupStep.server &&
             state.step != SetupStep.done;
+        // On the first step, back leaves the wizard (to the welcome screen).
+        final canLeave =
+            !state.busy &&
+            state.step == SetupStep.server &&
+            Navigator.of(context).canPop();
         return PopScope(
-          canPop: false,
+          canPop: canLeave,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop && canGoBack) cubit.back();
           },
@@ -48,7 +53,7 @@ class SetupPage extends StatelessWidget {
                       icon: const Icon(Icons.arrow_back),
                       onPressed: cubit.back,
                     )
-                  : null,
+                  : (canLeave ? const BackButton() : null),
               title: Text(
                 'Set up · ${state.step.index.clamp(0, 4) + 1} of 5 · '
                 '${_titles[state.step.index]}',

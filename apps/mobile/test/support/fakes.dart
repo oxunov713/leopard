@@ -10,6 +10,7 @@ import 'package:leopard_mobile/core/session/vault_session.dart';
 import 'package:leopard_mobile/core/storage/device_store.dart';
 import 'package:leopard_mobile/core/storage/secure_key_value_store.dart';
 import 'package:leopard_mobile/features/qr_approve/domain/qr_login_repository.dart';
+import 'package:leopard_mobile/features/restore/domain/restore_repository.dart';
 import 'package:leopard_mobile/features/sessions/domain/sessions_repository.dart';
 import 'package:leopard_mobile/features/setup/domain/setup_repository.dart';
 import 'package:leopard_mobile/features/unlock/domain/unlock_repository.dart';
@@ -18,6 +19,8 @@ import 'package:leopard_mobile/features/vault/domain/vault_repository.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockSetupRepository extends Mock implements SetupRepository {}
+
+class MockRestoreRepository extends Mock implements RestoreRepository {}
 
 class MockUnlockRepository extends Mock implements UnlockRepository {}
 

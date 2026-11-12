@@ -10,7 +10,9 @@ import 'package:leopard_mobile/app/dependencies.dart';
 import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/core/session/vault_session.dart';
 import 'package:leopard_mobile/core/storage/device_store.dart';
+import 'package:leopard_mobile/features/restore/presentation/restore_page.dart';
 import 'package:leopard_mobile/features/setup/presentation/setup_page.dart';
+import 'package:leopard_mobile/features/setup/presentation/welcome_page.dart';
 import 'package:leopard_mobile/features/unlock/presentation/unlock_page.dart';
 import 'package:leopard_mobile/features/vault/domain/vault_repository.dart';
 import 'package:leopard_mobile/features/vault/presentation/vault_list_page.dart';
@@ -69,6 +71,7 @@ void main() {
     clipboard: clipboard,
     deviceAuthenticator: deviceAuth,
     setupRepository: MockSetupRepository(),
+    restoreRepository: MockRestoreRepository(),
     unlockRepository: unlock,
     vaultRepository: vault,
     qrLoginRepository: MockQrLoginRepository(),
@@ -81,15 +84,30 @@ void main() {
     }
   }
 
-  testWidgets('a phone without a vault opens the setup wizard', (tester) async {
+  testWidgets('a phone without a vault offers create or restore', (
+    tester,
+  ) async {
     useTallSurface(tester);
     when(store.readRegistration).thenAnswer((_) async => null);
 
     await tester.pumpWidget(LeopardApp(dependencies: dependencies()));
     await settle(tester);
 
-    expect(find.byType(SetupPage), findsOneWidget);
+    expect(find.byType(WelcomePage), findsOneWidget);
     expect(find.byType(VaultListPage), findsNothing);
+
+    await tester.tap(find.byKey(const Key('welcome-create')));
+    await settle(tester);
+    expect(find.byType(SetupPage), findsOneWidget);
+
+    // Back from the first step of the wizard returns to the choice.
+    await tester.tap(find.byType(BackButton));
+    await settle(tester);
+    expect(find.byType(WelcomePage), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('welcome-restore')));
+    await settle(tester);
+    expect(find.byType(RestorePage), findsOneWidget);
   });
 
   testWidgets('a set-up phone starts locked; unlocking loads the vault and '

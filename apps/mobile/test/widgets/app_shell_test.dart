@@ -18,9 +18,10 @@ void main() {
       '/sessions',
       '/activity',
     ];
+    const setupRoutes = ['/setup', '/setup/create', '/setup/restore'];
 
     test('locked: everything goes to the lock screen', () {
-      for (final route in [...vaultRoutes, '/', '/setup']) {
+      for (final route in [...vaultRoutes, '/', ...setupRoutes]) {
         expect(redirectFor(AppLockStatus.locked, route), '/unlock');
       }
       expect(redirectFor(AppLockStatus.locked, '/unlock'), isNull);
@@ -30,11 +31,13 @@ void main() {
       for (final route in [...vaultRoutes, '/', '/unlock']) {
         expect(redirectFor(AppLockStatus.needsSetup, route), '/setup');
       }
-      expect(redirectFor(AppLockStatus.needsSetup, '/setup'), isNull);
+      for (final route in setupRoutes) {
+        expect(redirectFor(AppLockStatus.needsSetup, route), isNull);
+      }
     });
 
     test('unlocked: entry screens lead to the vault, the rest stay', () {
-      for (final route in ['/', '/setup', '/unlock']) {
+      for (final route in ['/', ...setupRoutes, '/unlock']) {
         expect(redirectFor(AppLockStatus.unlocked, route), '/vault');
       }
       for (final route in vaultRoutes) {

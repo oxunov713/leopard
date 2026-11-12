@@ -58,7 +58,8 @@ docs/
   show the same 6-digit code.
 - **Emergency login** without the phone: master password + TOTP.
 - **Lost phone:** the recovery key registers a new phone and revokes the old one
-  (protocol and server are done; the Android app does not have the screen yet).
+  ("Restore with recovery key" on the first screen of the Android app). The
+  vault key is not rotated in v1.
 
 Details and threat model: [`docs/crypto-spec.md`](docs/crypto-spec.md).
 

@@ -7,6 +7,7 @@ import 'package:leopard_mobile/core/lock/app_lock_cubit.dart';
 import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/core/security/secret_clipboard.dart';
 import 'package:leopard_mobile/features/qr_approve/presentation/qr_approve_cubit.dart';
+import 'package:leopard_mobile/features/restore/presentation/restore_cubit.dart';
 import 'package:leopard_mobile/features/setup/presentation/setup_cubit.dart';
 import 'package:leopard_mobile/features/unlock/presentation/unlock_cubit.dart';
 import 'package:leopard_mobile/features/vault/presentation/vault_cubit.dart';
@@ -15,6 +16,9 @@ import 'package:mocktail/mocktail.dart';
 import '../support/fakes.dart';
 
 class MockSetupCubit extends MockCubit<SetupState> implements SetupCubit {}
+
+class MockRestoreCubit extends MockCubit<RestoreState>
+    implements RestoreCubit {}
 
 class MockUnlockCubit extends MockCubit<UnlockState> implements UnlockCubit {}
 

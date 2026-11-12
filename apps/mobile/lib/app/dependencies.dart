@@ -9,6 +9,8 @@ import '../core/storage/device_store.dart';
 import '../core/storage/flutter_secure_key_value_store.dart';
 import '../features/qr_approve/data/qr_login_repository_impl.dart';
 import '../features/qr_approve/domain/qr_login_repository.dart';
+import '../features/restore/data/restore_repository_impl.dart';
+import '../features/restore/domain/restore_repository.dart';
 import '../features/sessions/data/sessions_repository_impl.dart';
 import '../features/sessions/domain/sessions_repository.dart';
 import '../features/setup/data/setup_repository_impl.dart';
@@ -30,6 +32,7 @@ final class AppDependencies {
     required this.clipboard,
     required this.deviceAuthenticator,
     required this.setupRepository,
+    required this.restoreRepository,
     required this.unlockRepository,
     required this.vaultRepository,
     required this.qrLoginRepository,
@@ -50,6 +53,13 @@ final class AppDependencies {
       clipboard: PlatformSecretClipboard(),
       deviceAuthenticator: deviceAuth,
       setupRepository: SetupRepositoryImpl(
+        store: store,
+        session: session,
+        remote: remote,
+        keyDerivation: keyDerivation,
+        crypto: crypto,
+      ),
+      restoreRepository: RestoreRepositoryImpl(
         store: store,
         session: session,
         remote: remote,
@@ -87,6 +97,7 @@ final class AppDependencies {
   final SecretClipboard clipboard;
   final DeviceAuthenticator deviceAuthenticator;
   final SetupRepository setupRepository;
+  final RestoreRepository restoreRepository;
   final UnlockRepository unlockRepository;
   final VaultRepository vaultRepository;
   final QrLoginRepository qrLoginRepository;
