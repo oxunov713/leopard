@@ -15,7 +15,7 @@
 # ---------------------------------------------------------------------------
 # Security headers and caching (all paths)
 # ---------------------------------------------------------------------------
-# OWNER ACTION: replace https://LEOPARD_API_HOST in connect-src with the exact
+# OWNER ACTION: replace https://leopard-cwae.onrender.com in connect-src with the exact
 # Cloud Run origin (https://leopard-api-xxxx-uc.a.run.app, no trailing slash).
 # Until then every API call is blocked (fails closed).
 #
@@ -41,7 +41,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://LEOPARD_API_HOST; manifest-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
+    Content-Security-Policy = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://leopard-cwae.onrender.com; manifest-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
     Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "no-referrer"

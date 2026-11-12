@@ -1,5 +1,43 @@
 # Deploying the Leopard API
 
+> **Live setup (2026-11):** the API runs on **Render** (free web service, Docker)
+> with **Neon** Postgres, and the web app on **Netlify**. Render is used because
+> Google Cloud asked for a $50 prepayment to open billing. The Render steps are in
+> section 0a; the Cloud Run sections below remain a working alternative.
+
+## 0a. Render (current)
+
+1. Neon: copy the connection string with **Connection pooling off** (no `-pooler`
+   in the host), ending in `?sslmode=require`.
+2. Generate the secrets and keep both offline (the server key is needed forever):
+   `openssl rand -base64 32` (server key), `openssl rand -hex 24` (setup token).
+3. Render → New → Web Service → connect GitHub (only the `leopard` repo).
+   Language **Docker**, branch `main`, region Virginia, **Root Directory `backend`**,
+   instance **Free**, health check path `/healthz`.
+4. Environment: `DATABASE_URL`, `LEOPARD_SERVER_KEY`, `LEOPARD_SETUP_TOKEN`,
+   `LEOPARD_TRUST_PROXY=2`, and after the web app exists
+   `LEOPARD_WEB_ORIGIN=https://<site>.netlify.app`. Do not set `PORT`.
+   - `LEOPARD_TRUST_PROXY=2`: Render's proxy does not strip a client-supplied
+     `X-Forwarded-For`; Cloudflare appends the real client IP and Render appends
+     Cloudflare's, so the client is the 2nd entry from the right. Check once in
+     the Logs that the `ip` field is your real IP.
+5. `https://<service>.onrender.com/healthz` → `{"status":"ok"}`.
+6. Create the vault on the phone (server address + setup token), then delete
+   `LEOPARD_SETUP_TOKEN` from the Render environment.
+
+Free-tier trade-off: the service sleeps after ~15 minutes idle and the first
+request takes 30-60 s. Deploys are automatic on every push to `main` that
+Render picks up.
+
+**Windows build note:** with the project on another drive than the pub cache,
+Kotlin incremental compilation fails ("different roots"); `apps/mobile/android/
+gradle.properties` sets `kotlin.incremental=false` for this. Run `flutter clean`
+after a failed build.
+
+---
+
+## Alternative: Google Cloud Run
+
 Target: **Google Cloud Run** (region `us-central1`, scale to zero) with
 **Neon** serverless Postgres. Both have free tiers that cover a single-user
 service; the budget alert below is the safety net.
