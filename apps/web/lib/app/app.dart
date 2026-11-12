@@ -11,8 +11,8 @@ import '../core/security/secret_clipboard.dart';
 import '../core/session/session_cubit.dart';
 import '../features/vault/presentation/vault_cubit.dart';
 import 'dependencies.dart';
-import 'theme.dart';
 import 'router.dart';
+import 'theme.dart';
 
 /// The root widget: providers, the router, and the three things that feed
 /// the session rules — user activity, tab visibility and tab close.
