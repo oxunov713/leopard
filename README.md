@@ -168,3 +168,32 @@ web app as static files on Netlify behind strict security headers.
 - Encrypted export file for offline backups.
 - Vault key rotation after a recovery; changing the master password.
 - One-time codes generated from TOTP secrets stored in login items.
+
+## How it was built
+
+I designed and directed this project; the implementation was done with
+AI-assisted development (Claude), working from specifications I wrote and
+reviewed.
+
+**My part**
+- Product and security requirements: zero-knowledge storage, the phone as the
+  only key, QR sign-in for the web, emergency access with master password + TOTP,
+  a paper recovery key.
+- Key decisions: Go for the API, Flutter for Android and web with a shared Dart
+  core, device screen lock instead of biometrics, free-tier hosting
+  (Render, Neon, Netlify), the visual design and brand colour.
+- Deployment and operations: provisioning the database and API, signing and
+  installing the Android app, configuring CORS and the web CSP.
+- Testing on a real device and browser, and deciding what to fix.
+
+**Process**
+- A written crypto specification with test vectors came first; the Go server and
+  the Dart client must both reproduce the same vectors.
+- Every change goes through CI: Go tests against Postgres, Dart and Flutter
+  analysis and tests, Android and web release builds with CSP checks.
+- Security-sensitive changes got an independent review pass before merging;
+  its findings were fixed and covered by tests.
+
+## License
+
+Copyright 2026 Oxunov Azizbek. Licensed under the [Apache License 2.0](LICENSE).
