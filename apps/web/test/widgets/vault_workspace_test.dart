@@ -21,7 +21,7 @@ void main() {
   late MockSecretClipboard clipboard;
   late VaultCubit cubit;
 
-  setUpAll(() => registerFallbackValue<VaultItem>(login('fallback')));
+  setUpAll(() => registerFallbackValue(login('fallback')));
 
   setUp(() {
     repository = MockVaultRepository();

@@ -57,13 +57,15 @@ class LoginPage extends StatelessWidget {
                                   SizedBox(width: 380, child: _QrCard()),
                                 ],
                               )
-                            : const Column(
+                            : Column(
                                 children: [
-                                  _Intro(wide: false),
-                                  SizedBox(height: 40),
+                                  const _Intro(wide: false),
+                                  const SizedBox(height: 40),
                                   ConstrainedBox(
-                                    constraints: BoxConstraints(maxWidth: 380),
-                                    child: _QrCard(),
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 380,
+                                    ),
+                                    child: const _QrCard(),
                                   ),
                                 ],
                               ),

@@ -147,7 +147,7 @@ class _VaultWorkspaceState extends State<VaultWorkspace> {
   void _onRootFocusChange(bool hasFocus) {
     if (hasFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !TickerMode.of(context)) return;
+      if (!mounted || !TickerMode.valuesOf(context).enabled) return;
       if (ModalRoute.of(context)?.isCurrent != true) return;
       final focus = FocusManager.instance.primaryFocus;
       if (focus == null || focus is FocusScopeNode) {
