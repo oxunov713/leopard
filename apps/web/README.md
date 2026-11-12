@@ -11,8 +11,9 @@ activity.
   with the default `Cryptography` instance: Web Crypto in the browser for
   AES-GCM, HKDF, HMAC, SHA-256 and X25519
 - No CDN, no Google Fonts, no service worker, no analytics. CanvasKit and the
-  fonts (Roboto, Roboto Mono) are part of the build, and CI fails if the
-  build stops being self-contained
+  fonts (Inter, Space Grotesk, JetBrains Mono, from
+  [`packages/leopard_ui`](../../packages/leopard_ui)) are part of the build,
+  and CI fails if the build stops being self-contained
 
 Protocol: [`docs/crypto-spec.md`](../../docs/crypto-spec.md). API: [`docs/api.md`](../../docs/api.md).
 
@@ -22,10 +23,45 @@ Protocol: [`docs/crypto-spec.md`](../../docs/crypto-spec.md). API: [`docs/api.md
 |---|---|
 | QR login (start page) | Fresh X25519 key pair per code, `POST /v1/qr`, QR code and 6-digit verification code, 60 s countdown. The code and the QR text are computed in the browser and compared with the server's; a mismatch stops the login. `GET /v1/qr/{sid}` is polled once a second with `X-Leopard-Poll-Token`, one request at a time; errors back off 2, 4, 8, 10 s, a 429 waits for `Retry-After`. On approval the vault key is decrypted (crypto-spec §10.1 step 9) and the private key zeroed. An expired code is replaced automatically four times, then the page asks first, so a forgotten tab goes quiet. Rejected, expired, consumed and undecryptable approvals each have their own message |
 | Emergency login | Master password + authenticator code. KDF parameters from the server (validated against the v1 minimum), Argon2id in the browser, the proof first, `wrapped_vk_master` only after the server accepts it, unwrap locally. One message for wrong password / wrong code / replayed code, because the server answers all three alike; 429 blocks the form for `Retry-After` |
-| Vault | List with search and type filter; detail view with secrets masked until revealed (hidden again after 20 s); copy; add, edit, delete for login, card, Wi-Fi, API key, SSH key, secure note. No CVV field, by design |
+| Vault | Three panes (see "Layout of the window"): type filters, list with search, detail. Secrets are masked until revealed (hidden again after 20 s); copy; add, edit (in the right pane) and delete for login, card, Wi-Fi, API key, SSH key, secure note. No CVV field, by design |
 | Sync | `GET /v1/items?since`, `PUT` with `expected_version`; a 409 asks "keep mine / take server"; a 410 offers to save the edit as a new item. Same rules and code as the phone app |
 | Generator | Passwords (length, character classes, no look-alikes) and EFF-wordlist passphrases from `leopard_core`, with the exact entropy and a strength meter. Works **without logging in** (`#/login/generator`); signed in, "save as new item" hands the password to the item form |
 | Session | See below |
+
+## Layout of the window
+
+The look comes from `packages/leopard_ui` (`leopardTheme(desktop: true)`);
+the web must feel like a desktop app, so it is built in panes:
+
+| Window width | Layout |
+|---|---|
+| 1100 px and up | Sidebar (240 px: type filters with counts, Generator, the idle countdown, "Lock now"), list (380 px), detail or editor |
+| 700 to 1100 px | A 72 px icon strip instead of the sidebar, list (320 px) with filter chips above it, detail or editor. The idle warning is a strip across the top |
+| Under 700 px | One pane at a time: the list; tapping an item replaces it with the detail, with a back button. A bar at the bottom holds Vault, Generator and Lock |
+
+The sidebar shows "Locks after 5:00 idle", and in the last minute before the
+idle lock (the only time the session reports it) a live "Locks in m:ss if
+idle". Which item is open is the workspace's own state, not the URL, so the
+arrow keys do not fill the browser history; the `/vault/...` routes only say
+what to open first (the generator's "save as new item" uses one).
+
+Keyboard (Cmd instead of Ctrl on a Mac). Built with `Shortcuts` and
+`Actions` in `vault_workspace.dart`:
+
+| Keys | Action |
+|---|---|
+| Ctrl K | Focus the search field |
+| Up / Down | Move the selection (and open that item); works from the search field |
+| Enter in the search | Open the selected item, or the first match, and leave the field |
+| Ctrl C | Copy the secret of the selected item (the password of a login) |
+| Ctrl B | Copy its first plain field (the username of a login) |
+| Esc | Clear the search; close the editor (asks first if text was typed) |
+
+Both copy shortcuts go through `SecretClipboard`, so the 30 s clear applies.
+While a text field has the focus they are switched off, so Ctrl+C in a field
+copies the selected text as usual; the shortcuts are also off while the
+editor is open. Values are never `SelectableText`, so there is no other way
+to copy a secret from the page.
 
 ## Run it
 
@@ -105,7 +141,9 @@ Two things to know:
 - Text in a script the bundled fonts do not cover (CJK, emoji, Arabic, …)
   would make the engine fetch a Noto font from `fonts.gstatic.com`. The policy
   blocks that, on purpose; such characters then show as empty boxes. Latin,
-  Cyrillic and Greek are covered by Roboto.
+  Cyrillic and Greek are covered by Inter. Icons are SVG assets
+  (`LeopardIcon`), drawn by `flutter_svg` from the asset bundle: nothing is
+  fetched.
 - CI checks the static half of this: no inline script or style attribute in
   `index.html`, no `eval` or `new Function` in `main.dart.js` and
   `canvaskit.js`, CanvasKit and fonts present in the build. The policy as a
@@ -194,21 +232,21 @@ server, not by the browser: the browser does not know the device key.
 ```
 lib/
   main.dart
-  app/                     root widget, router, theme, shell, dependency wiring
+  app/                     root widget, router, window shell (sidebar / rail / bar), dependency wiring
   core/
     config/                AppConfig: LEOPARD_API_URL
     error/                 AppFailure and the error-to-text mapping
     network/               LeopardApi: the API calls the web makes, 401 announcement
     security/              clipboard, key derivation, password hand-off
     session/               VaultSession (the key in memory), SessionCubit (every lock rule)
-    widgets/               secret field, secret value tile, strength meter, small shared widgets
+    widgets/               secret field, field row, strength meter, shared desktop parts
   features/
     qr_login/              domain / data / presentation
     emergency_login/       domain / data / presentation
     vault/                 domain / data / presentation
     generator/             presentation
 web/                       index.html, flutter_bootstrap.js, styles.css, favicon
-assets/fonts/              Roboto (Apache 2.0), Roboto Mono (OFL 1.1), with licences
+assets/fonts/              Roboto, Roboto Mono (no longer used by the UI; CI still checks that they are bundled)
 test/                      VM and widget tests; test/browser runs in Chrome
 ```
 

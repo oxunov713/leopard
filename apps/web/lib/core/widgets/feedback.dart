@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../app/theme.dart';
 import '../security/secret_clipboard.dart';
 
 void showMessage(BuildContext context, String message) {
@@ -33,7 +33,14 @@ class ErrorText extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Icon(Icons.error_outline, size: 18, color: LeopardColors.danger),
+      const Padding(
+        padding: EdgeInsets.only(top: 2),
+        child: LeopardIcon(
+          LeopardIcons.shieldAlert,
+          size: 18,
+          color: LeopardColors.danger,
+        ),
+      ),
       const SizedBox(width: 8),
       Expanded(
         child: Text(
@@ -42,27 +49,6 @@ class ErrorText extends StatelessWidget {
         ),
       ),
     ],
-  );
-}
-
-/// Small upper-case section heading.
-class SectionLabel extends StatelessWidget {
-  const SectionLabel(this.text, {super.key});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-    child: Text(
-      text.toUpperCase(),
-      style: const TextStyle(
-        fontSize: 11,
-        letterSpacing: 1.6,
-        fontWeight: FontWeight.w600,
-        color: LeopardColors.brass,
-      ),
-    ),
   );
 }
 
@@ -77,10 +63,14 @@ Future<bool> confirm(
     context: context,
     builder: (context) => AlertDialog(
       title: Text(title),
-      content: Text(message),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Text(message),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
+          style: TextButton.styleFrom(foregroundColor: LeopardColors.textSoft),
           child: const Text('Cancel'),
         ),
         TextButton(

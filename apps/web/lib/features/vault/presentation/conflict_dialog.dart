@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../domain/vault_entry.dart';
 import 'vault_cubit.dart';
 
@@ -74,12 +74,12 @@ class ConflictDialog extends StatelessWidget {
         TextButton(
           key: const Key('conflict-take-server'),
           onPressed: () => Navigator.of(context).pop(ConflictChoice.takeServer),
-          child: const Text('TAKE SERVER'),
+          child: const Text('Take server'),
         ),
         TextButton(
           key: const Key('conflict-keep-mine'),
           onPressed: () => Navigator.of(context).pop(ConflictChoice.keepMine),
-          child: Text(conflict.isDelete ? 'DELETE ANYWAY' : 'KEEP MINE'),
+          child: Text(conflict.isDelete ? 'Delete anyway' : 'Keep mine'),
         ),
       ],
     );

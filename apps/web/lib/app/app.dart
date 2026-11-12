@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:leopard_ui/leopard_ui.dart' show leopardTheme;
+import 'package:leopard_ui/leopard_ui.dart';
 
 import '../core/security/password_handoff.dart';
 import '../core/security/secret_clipboard.dart';
@@ -12,7 +12,6 @@ import '../core/session/session_cubit.dart';
 import '../features/vault/presentation/vault_cubit.dart';
 import 'dependencies.dart';
 import 'router.dart';
-import 'theme.dart';
 
 /// The root widget: providers, the router, and the three things that feed
 /// the session rules — user activity, tab visibility and tab close.
@@ -144,8 +143,8 @@ class ConfigErrorApp extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.settings_suggest_outlined,
+                const LeopardIcon(
+                  LeopardIcons.shieldAlert,
                   size: 40,
                   color: LeopardColors.textMuted,
                 ),
