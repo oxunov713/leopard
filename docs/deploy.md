@@ -155,7 +155,8 @@ gcloud run services update leopard-api --region="$REGION" --remove-secrets=LEOPA
 The web app (`apps/web`, Flutter Web) is a static site on **Netlify**'s free
 tier. It is built outside Netlify (its build image has no Flutter) and the
 prebuilt `build/web` directory is uploaded. `apps/web/netlify.toml` holds the
-publish directory, security headers, caching rules and the SPA fallback.
+publish directory, security headers and caching rules. It is only read when
+you deploy **from `apps/web`**, so every command below runs there.
 
 ### 8.1 Build
 
@@ -163,12 +164,14 @@ From the repository root, with the Cloud Run URL from step 5:
 
 ```sh
 cd apps/web
-flutter build web --release --no-web-resources-cdn \
+flutter build web --release --no-web-resources-cdn --csp \
   --dart-define=LEOPARD_API_URL=https://<cloud-run-host>
 ```
 
 `--no-web-resources-cdn` bundles CanvasKit into `build/web/canvaskit/`, so the
-page never loads code from a third-party CDN (the CSP forbids it).
+page never loads code from a third-party CDN (the CSP forbids it). `--csp`
+builds without `eval`/`new Function`, which is what CI checks against
+`script-src 'self'`; a build without it is not the build CI verified.
 
 ### 8.2 Create the site and deploy
 
@@ -179,11 +182,13 @@ prebuilt directory:
 npm install -g netlify-cli
 netlify login
 netlify sites:create --name YOUR-SITE-NAME     # note the site ID
-netlify deploy --prod --dir=apps/web/build/web --site=NETLIFY_SITE_ID
+cd apps/web
+netlify deploy --prod --dir=build/web --site=NETLIFY_SITE_ID
 ```
 
-`netlify.toml` is read from the directory you run the command in, so run it
-from `apps/web` (`--dir=build/web`) if the headers are missing from the result.
+`netlify.toml` is read from the directory you run the command in. Running it
+from the repository root publishes the site **without** CSP, HSTS and the other
+headers, so always deploy from `apps/web`.
 
 For non-interactive use (CI, or deploying a downloaded GitHub Actions
 artifact), set a personal access token and the site ID instead of logging in:
@@ -191,7 +196,8 @@ artifact), set a personal access token and the site ID instead of logging in:
 ```sh
 export NETLIFY_AUTH_TOKEN=...     # User settings > Applications > Personal access tokens
 export NETLIFY_SITE_ID=...        # Site configuration > Site ID
-netlify deploy --prod --dir=build/web        # run inside apps/web
+cd apps/web
+netlify deploy --prod --dir=build/web
 ```
 
 For the Actions artifact: download it, unzip it into `apps/web/build/web`, and
@@ -223,7 +229,7 @@ blocked resource, widen only that directive and only as far as needed.
 ```sh
 curl -sI https://YOUR-SITE-NAME.netlify.app/ | grep -i -E \
   'content-security-policy|strict-transport|x-content-type|referrer-policy|x-frame|cross-origin|permissions-policy|cache-control'
-curl -sI https://YOUR-SITE-NAME.netlify.app/flutter_service_worker.js | grep -i cache-control   # no-cache
+curl -sI https://YOUR-SITE-NAME.netlify.app/main.dart.js | grep -i cache-control   # no-cache
 # CORS: an allowed origin gets 204, any other origin is refused with 403.
 curl -si -X OPTIONS "$URL/v1/setup" -H 'Origin: https://YOUR-SITE-NAME.netlify.app' \
   -H 'Access-Control-Request-Method: POST' | head -5
@@ -236,8 +242,10 @@ Checklist:
 - [ ] CSP header present and the placeholder `LEOPARD_API_HOST` is gone.
 - [ ] Browser console shows no CSP violations while loading, logging in and copying a password.
 - [ ] A request from any other `Origin` is rejected by the API (`403 origin_not_allowed`).
-- [ ] `index.html` and `flutter_service_worker.js` return `Cache-Control: no-cache`.
-- [ ] Reloading a deep link (any non-root path) serves the app, not a 404.
+- [ ] `index.html`, `main.dart.js` and `canvaskit/*` return `Cache-Control: no-cache`
+      (Flutter does not hash file names, so nothing is cached without revalidation).
+- [ ] The app uses hash routes (`/#/...`); there is no SPA fallback, so an unknown
+      path such as `/nope` returns 404.
 
 ## 9. Cost notes
 
