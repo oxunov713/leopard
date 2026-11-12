@@ -39,8 +39,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Bundled so that nothing is fetched from a font CDN at runtime: the site's
-  # Content-Security-Policy allows connections to itself and the API only.
+  # The UI uses the fonts of leopard_ui. These two are no longer referenced by
+  # any theme; they stay because the CI step "The build is self-contained"
+  # still lists them. Remove them together with that check.
   fonts:
     - family: Roboto
       fonts:

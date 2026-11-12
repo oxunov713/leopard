@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/widgets/feedback.dart';
-import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/secret_text_field.dart';
+import '../../../core/widgets/ui_parts.dart';
 import '../domain/emergency_login_repository.dart';
 import 'emergency_login_cubit.dart';
 
@@ -48,103 +48,124 @@ class _EmergencyLoginPageState extends State<EmergencyLoginPage> {
   };
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: BlocConsumer<EmergencyLoginCubit, EmergencyLoginState>(
-      listenWhen: (before, after) =>
-          before.isWorking && !after.isWorking && after.error != null,
-      // A code is single-use: whatever went wrong, the next attempt needs a
-      // new one.
-      listener: (context, state) => _code.clear(),
-      builder: (context, state) => PageBody(
-        children: [
-          const SizedBox(height: 24),
-          const LeopardMark(subtitle: 'Emergency login without the phone'),
-          const SizedBox(height: 24),
-          Panel(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SecretTextField(
-                  key: const Key('emergency-password'),
-                  controller: _password,
-                  label: 'Master password',
-                  autofocus: true,
-                  enabled: !state.isWorking,
-                  textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  key: const Key('emergency-code'),
-                  controller: _code,
-                  enabled: !state.isWorking,
-                  style: secretTextStyle,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(6),
-                  ],
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  enableIMEPersonalizedLearning: false,
-                  autofillHints: null,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _submit(),
-                  decoration: const InputDecoration(
-                    labelText: 'Authenticator code',
-                    helperText:
-                        '6 digits, from the app you set up with Leopard',
-                  ),
-                ),
-                const SizedBox(height: 20),
-                if (state.isWorking)
-                  _Working(
-                    text: _phaseText(state.phase),
-                    phase: state.phase,
-                    elapsedSeconds: state.elapsedSeconds,
-                  )
-                else
-                  FilledButton(
-                    key: const Key('emergency-submit'),
-                    onPressed: state.canSubmit ? _submit : null,
-                    child: Text(
-                      state.canSubmit
-                          ? 'UNLOCK'
-                          : 'WAIT ${state.retryInSeconds} S',
+  Widget build(BuildContext context) =>
+      BlocConsumer<EmergencyLoginCubit, EmergencyLoginState>(
+        listenWhen: (before, after) =>
+            before.isWorking && !after.isWorking && after.error != null,
+        // A code is single-use: whatever went wrong, the next attempt needs
+        // a new one.
+        listener: (context, state) => _code.clear(),
+        builder: (context, state) => PublicPage(
+          action: TextButton(
+            key: const Key('emergency-back'),
+            onPressed: state.isWorking ? null : () => context.go('/login'),
+            child: const Text('Back to the QR code'),
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: Column(
+                  children: [
+                    CardPanel(
+                      radius: 28,
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Sign in with master password',
+                            style: headingStyle(24, letterSpacing: -0.3),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Emergency login without the phone.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: LeopardColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          SecretTextField(
+                            key: const Key('emergency-password'),
+                            controller: _password,
+                            label: 'Master password',
+                            autofocus: true,
+                            enabled: !state.isWorking,
+                            textInputAction: TextInputAction.next,
+                          ),
+                          const SizedBox(height: 14),
+                          TextField(
+                            key: const Key('emergency-code'),
+                            controller: _code,
+                            enabled: !state.isWorking,
+                            style: leopardSecretTextStyle,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(6),
+                            ],
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            enableIMEPersonalizedLearning: false,
+                            autofillHints: null,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => _submit(),
+                            decoration: const InputDecoration(
+                              labelText: 'Authenticator code',
+                              helperText:
+                                  '6 digits, from the app you set up with '
+                                  'Leopard',
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          if (state.isWorking)
+                            _Working(
+                              text: _phaseText(state.phase),
+                              phase: state.phase,
+                              elapsedSeconds: state.elapsedSeconds,
+                            )
+                          else
+                            FilledButton(
+                              key: const Key('emergency-submit'),
+                              onPressed: state.canSubmit ? _submit : null,
+                              child: Text(
+                                state.canSubmit
+                                    ? 'Unlock'
+                                    : 'Wait ${state.retryInSeconds} s',
+                              ),
+                            ),
+                          if (state.error != null) ...[
+                            const SizedBox(height: 16),
+                            ErrorText(
+                              state.error!,
+                              key: const Key('emergency-error'),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                if (state.error != null) ...[
-                  const SizedBox(height: 16),
-                  ErrorText(state.error!, key: const Key('emergency-error')),
-                ],
-              ],
+                    const SizedBox(height: 20),
+                    const Text(
+                      'The password never leaves this browser. It is turned '
+                      'into a key here (Argon2id, 64 MiB), which takes '
+                      'several seconds and may make the page stutter. The '
+                      'server allows 5 attempts in 15 minutes.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: LeopardColors.textMuted,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 20),
-          const Text(
-            'The password never leaves this browser. It is turned into a key '
-            'here (Argon2id, 64 MiB), which takes several seconds and may '
-            'make the page stutter. The server allows 5 attempts in 15 '
-            'minutes.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: LeopardColors.textMuted,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: TextButton(
-              key: const Key('emergency-back'),
-              onPressed: state.isWorking ? null : () => context.go('/login'),
-              child: const Text('Back to the QR code'),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
 
 class _Working extends StatelessWidget {

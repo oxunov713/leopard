@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:leopard_core/leopard_core.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/security/password_handoff.dart';
 import '../../../core/security/secret_clipboard.dart';
 import '../../../core/widgets/feedback.dart';
-import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/strength_meter.dart';
+import '../../../core/widgets/ui_parts.dart';
 import 'generator_cubit.dart';
 
 /// Password and passphrase generator. Needs a [GeneratorCubit] above it.
 ///
 /// The generator works without a login: it only needs the browser's random
 /// number generator. Saving the result as an item needs the vault, so that
-/// button is shown only when [canSave] is set; signed out, the page offers
-/// the way back to the login instead.
+/// button is shown only when [canSave] is set; signed out, the page has its
+/// own top bar with the way back to the login instead.
 class GeneratorPage extends StatelessWidget {
   const GeneratorPage({super.key, this.canSave = true});
 
@@ -39,158 +39,193 @@ class GeneratorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<GeneratorCubit>();
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('GENERATOR'),
-        actions: [
-          if (!canSave)
-            TextButton(
-              key: const Key('generator-to-login'),
-              onPressed: () => context.go('/login'),
-              child: const Text('SIGN IN'),
-            ),
-        ],
+    final body = BlocBuilder<GeneratorCubit, GeneratorState>(
+      builder: (context, state) => _body(context, state),
+    );
+    if (canSave) {
+      return body;
+    }
+    return PublicPage(
+      action: FilledButton(
+        key: const Key('generator-to-login'),
+        onPressed: () => context.go('/login'),
+        child: const Text('Sign in'),
       ),
-      body: BlocBuilder<GeneratorCubit, GeneratorState>(
-        builder: (context, state) => WideBody(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      child: body,
+    );
+  }
+
+  Widget _body(BuildContext context, GeneratorState state) {
+    final cubit = context.read<GeneratorCubit>();
+    final small = MediaQuery.sizeOf(context).width < HomeBreakpoints.rail;
+    final padding = small ? 20.0 : 40.0;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(padding, small ? 20 : 32, padding, 32),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Panel(
+              Text(
+                'Password generator',
+                style: headingStyle(28, letterSpacing: -0.4),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Made in this browser. Nothing is sent anywhere.',
+                style: TextStyle(fontSize: 13, color: LeopardColors.textMuted),
+              ),
+              const SizedBox(height: 24),
+              CardPanel(
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Plain Text on purpose: a selectable value could be
                     // copied with Ctrl+C, bypassing the 30 s clipboard clear
-                    // of the COPY button.
+                    // of the Copy button.
                     Text(
                       state.value,
                       key: const Key('generator-value'),
-                      style: secretTextStyle.copyWith(fontSize: 19),
+                      style: leopardSecretTextStyle.copyWith(fontSize: 22),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     StrengthMeter(bits: state.entropyBits),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      key: const Key('generator-regenerate'),
-                      onPressed: cubit.regenerate,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('NEW'),
-                    ),
+                  OutlinedButton.icon(
+                    key: const Key('generator-regenerate'),
+                    onPressed: cubit.regenerate,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('New'),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      key: const Key('generator-copy'),
-                      onPressed: () => copySecret(
-                        context,
-                        context.read<SecretClipboard>(),
-                        state.value,
-                      ),
-                      icon: const Icon(Icons.copy_outlined),
-                      label: const Text('COPY'),
+                  FilledButton.icon(
+                    key: const Key('generator-copy'),
+                    onPressed: () => copySecret(
+                      context,
+                      context.read<SecretClipboard>(),
+                      state.value,
                     ),
+                    icon: const LeopardIcon(LeopardIcons.copy, size: 18),
+                    label: const Text('Copy'),
                   ),
+                  if (canSave)
+                    OutlinedButton.icon(
+                      key: const Key('generator-save'),
+                      onPressed: () {
+                        context.read<PasswordHandoff>().offer(state.value);
+                        context.go('/vault/new/${LoginItem.typeName}');
+                      },
+                      icon: const LeopardIcon(LeopardIcons.plus, size: 18),
+                      label: const Text('Save as new item'),
+                    ),
                 ],
               ),
-              if (canSave) ...[
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  key: const Key('generator-save'),
-                  onPressed: () {
-                    context.read<PasswordHandoff>().offer(state.value);
-                    context.push('/vault/new/${LoginItem.typeName}');
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('SAVE AS NEW ITEM'),
+              const SizedBox(height: 24),
+              CardPanel(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SegmentedButton<GeneratorMode>(
+                      segments: const [
+                        ButtonSegment(
+                          value: GeneratorMode.password,
+                          label: Text('Password'),
+                        ),
+                        ButtonSegment(
+                          value: GeneratorMode.passphrase,
+                          label: Text('Passphrase'),
+                        ),
+                      ],
+                      selected: {state.mode},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (selection) =>
+                          cubit.setMode(selection.first),
+                    ),
+                    const SizedBox(height: 12),
+                    if (state.mode == GeneratorMode.password) ...[
+                      _SliderRow(
+                        label: 'Length',
+                        value: state.length,
+                        min: GeneratorCubit.minLength,
+                        max: GeneratorCubit.maxLength,
+                        onChanged: cubit.setLength,
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final entry in _classLabels.entries)
+                            FilterChip(
+                              key: Key('generator-class-${entry.key.name}'),
+                              label: Text(
+                                entry.value,
+                                style: leopardSecretTextStyle.copyWith(
+                                  fontSize: 13,
+                                ),
+                              ),
+                              selected: state.classes.contains(entry.key),
+                              showCheckmark: false,
+                              onSelected: (_) => cubit.toggleClass(entry.key),
+                            ),
+                        ],
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Avoid look-alike characters'),
+                        subtitle: const Text('0 O o 1 l I |'),
+                        value: state.excludeAmbiguous,
+                        onChanged: cubit.setExcludeAmbiguous,
+                      ),
+                    ] else ...[
+                      _SliderRow(
+                        label: 'Words',
+                        value: state.wordCount,
+                        min: GeneratorCubit.minWords,
+                        max: GeneratorCubit.maxWords,
+                        onChanged: cubit.setWordCount,
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final entry in _separators.entries)
+                            ChoiceChip(
+                              label: Text(entry.value),
+                              selected: state.separator == entry.key,
+                              showCheckmark: false,
+                              onSelected: (_) =>
+                                  cubit.setSeparator(entry.key),
+                            ),
+                        ],
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Capitalise words'),
+                        value: state.capitalize,
+                        onChanged: cubit.setCapitalize,
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Add a digit'),
+                        value: state.includeNumber,
+                        onChanged: cubit.setIncludeNumber,
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-              const SizedBox(height: 20),
-              SegmentedButton<GeneratorMode>(
-                segments: const [
-                  ButtonSegment(
-                    value: GeneratorMode.password,
-                    label: Text('Password'),
-                  ),
-                  ButtonSegment(
-                    value: GeneratorMode.passphrase,
-                    label: Text('Passphrase'),
-                  ),
-                ],
-                selected: {state.mode},
-                showSelectedIcon: false,
-                onSelectionChanged: (selection) =>
-                    cubit.setMode(selection.first),
               ),
-              const SizedBox(height: 8),
-              if (state.mode == GeneratorMode.password) ...[
-                _SliderRow(
-                  label: 'Length',
-                  value: state.length,
-                  min: GeneratorCubit.minLength,
-                  max: GeneratorCubit.maxLength,
-                  onChanged: cubit.setLength,
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final entry in _classLabels.entries)
-                      FilterChip(
-                        key: Key('generator-class-${entry.key.name}'),
-                        label: Text(entry.value, style: secretTextStyle),
-                        selected: state.classes.contains(entry.key),
-                        showCheckmark: false,
-                        onSelected: (_) => cubit.toggleClass(entry.key),
-                      ),
-                  ],
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Avoid look-alike characters'),
-                  subtitle: const Text('0 O o 1 l I |'),
-                  value: state.excludeAmbiguous,
-                  onChanged: cubit.setExcludeAmbiguous,
-                ),
-              ] else ...[
-                _SliderRow(
-                  label: 'Words',
-                  value: state.wordCount,
-                  min: GeneratorCubit.minWords,
-                  max: GeneratorCubit.maxWords,
-                  onChanged: cubit.setWordCount,
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final entry in _separators.entries)
-                      ChoiceChip(
-                        label: Text(entry.value),
-                        selected: state.separator == entry.key,
-                        showCheckmark: false,
-                        onSelected: (_) => cubit.setSeparator(entry.key),
-                      ),
-                  ],
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Capitalise words'),
-                  value: state.capitalize,
-                  onChanged: cubit.setCapitalize,
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Add a digit'),
-                  value: state.includeNumber,
-                  onChanged: cubit.setIncludeNumber,
-                ),
-              ],
             ],
           ),
         ),
@@ -230,7 +265,11 @@ class _SliderRow extends StatelessWidget {
       ),
       SizedBox(
         width: 32,
-        child: Text('$value', textAlign: TextAlign.end, style: secretTextStyle),
+        child: Text(
+          '$value',
+          textAlign: TextAlign.end,
+          style: leopardSecretTextStyle,
+        ),
       ),
     ],
   );

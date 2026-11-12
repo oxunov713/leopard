@@ -2,7 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:leopard_web/app/theme.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 import 'package:leopard_web/core/session/session_cubit.dart';
 import 'package:leopard_web/core/widgets/secret_text_field.dart';
 import 'package:leopard_web/features/emergency_login/domain/emergency_login_repository.dart';
@@ -39,7 +39,7 @@ Future<void> pumpPage(
   await tester.pumpWidget(
     MultiBlocProvider(
       providers: providers,
-      child: MaterialApp(theme: buildLeopardTheme(), home: page),
+      child: MaterialApp(theme: leopardTheme(desktop: true), home: page),
     ),
   );
 }
@@ -232,7 +232,7 @@ void main() {
         ),
       );
       expect(find.byKey(const Key('emergency-error')), findsOneWidget);
-      expect(find.text('WAIT 90 S'), findsOneWidget);
+      expect(find.text('Wait 90 s'), findsOneWidget);
       await tester.tap(find.byKey(const Key('emergency-submit')));
       verifyNever(
         () => cubit.submit(

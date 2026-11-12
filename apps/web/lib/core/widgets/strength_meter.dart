@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../app/theme.dart';
+import 'ui_parts.dart';
 
 /// A coarse reading of an entropy figure.
 enum StrengthLevel {
   weak('Weak', LeopardColors.danger),
-  fair('Fair', LeopardColors.warning),
-  good('Good', LeopardColors.brass),
+  fair('Fair', warningColor),
+  good('Good', LeopardColors.primary),
   strong('Strong', LeopardColors.ok),
   excellent('Excellent', LeopardColors.ok);
 
@@ -29,12 +30,16 @@ StrengthLevel strengthLevelFor(double bits) {
   return StrengthLevel.excellent;
 }
 
-/// A bar and a label for the entropy of a generated secret.
+/// A bar and "Strong · 104 bits" for the entropy of a secret.
+///
+/// [keyed] puts the keys the generator tests look for on the parts; a page
+/// that can show two meters at once leaves it off for one of them.
 class StrengthMeter extends StatelessWidget {
-  const StrengthMeter({super.key, required this.bits});
+  const StrengthMeter({super.key, required this.bits, this.keyed = true});
 
   /// Entropy in bits.
   final double bits;
+  final bool keyed;
 
   /// The bar is full at this many bits.
   static const double fullAt = 128;
@@ -42,46 +47,36 @@ class StrengthMeter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = strengthLevelFor(bits);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final style = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: level.color,
+    );
+    return Row(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(3),
-          child: LinearProgressIndicator(
-            key: const Key('strength-bar'),
-            value: (bits / fullAt).clamp(0.0, 1.0),
-            minHeight: 6,
-            color: level.color,
-            backgroundColor: LeopardColors.outline,
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              key: keyed ? const Key('strength-bar') : null,
+              value: (bits / fullAt).clamp(0.0, 1.0),
+              minHeight: 6,
+              color: level.color,
+              backgroundColor: LeopardColors.divider,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Text(
-              level.label.toUpperCase(),
-              key: const Key('strength-label'),
-              style: TextStyle(
-                fontSize: 11,
-                letterSpacing: 1.4,
-                fontWeight: FontWeight.w600,
-                color: level.color,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                '${bits.round()} bits of entropy',
-                key: const Key('generator-entropy'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: LeopardColors.textMuted,
-                ),
-              ),
-            ),
-          ],
+        const SizedBox(width: 12),
+        Text(
+          level.label,
+          key: keyed ? const Key('strength-label') : null,
+          style: style,
+        ),
+        Text(
+          ' · ${bits.round()} bits',
+          key: keyed ? const Key('generator-entropy') : null,
+          maxLines: 1,
+          style: style,
         ),
       ],
     );

@@ -11,9 +11,7 @@ import '../features/generator/presentation/generator_cubit.dart';
 import '../features/generator/presentation/generator_page.dart';
 import '../features/qr_login/presentation/login_page.dart';
 import '../features/qr_login/presentation/qr_login_cubit.dart';
-import '../features/vault/presentation/item_detail_page.dart';
-import '../features/vault/presentation/item_edit_page.dart';
-import '../features/vault/presentation/vault_list_page.dart';
+import '../features/vault/presentation/vault_workspace.dart';
 import 'dependencies.dart';
 import 'home_shell.dart';
 
@@ -53,6 +51,11 @@ class _SessionListenable extends ChangeNotifier {
     super.dispose();
   }
 }
+
+Page<void> _workspacePage(Widget workspace) => NoTransitionPage<void>(
+  key: const ValueKey('vault-workspace'),
+  child: workspace,
+);
 
 GoRouter buildRouter({
   required SessionCubit session,
@@ -98,11 +101,37 @@ GoRouter buildRouter({
         builder: (context, state, navigationShell) =>
             HomeShell(navigationShell: navigationShell),
         branches: [
+          // The four vault routes show the same workspace: the route only says
+          // what it starts with. All four use one page key, so moving between
+          // them updates the workspace instead of replacing it (the search
+          // field keeps its text and focus).
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/vault',
-                builder: (context, state) => const VaultListPage(),
+                pageBuilder: (context, state) =>
+                    _workspacePage(const VaultWorkspace()),
+              ),
+              GoRoute(
+                path: '/vault/item/:id',
+                pageBuilder: (context, state) => _workspacePage(
+                  VaultWorkspace(itemId: state.pathParameters['id']),
+                ),
+              ),
+              GoRoute(
+                path: '/vault/edit/:id',
+                pageBuilder: (context, state) => _workspacePage(
+                  VaultWorkspace(
+                    itemId: state.pathParameters['id'],
+                    editing: true,
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: '/vault/new/:type',
+                pageBuilder: (context, state) => _workspacePage(
+                  VaultWorkspace(newType: state.pathParameters['type']),
+                ),
               ),
             ],
           ),
@@ -118,21 +147,6 @@ GoRouter buildRouter({
             ],
           ),
         ],
-      ),
-      GoRoute(
-        path: '/vault/item/:id',
-        builder: (context, state) =>
-            ItemDetailPage(id: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/vault/edit/:id',
-        builder: (context, state) =>
-            ItemEditPage.edit(id: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/vault/new/:type',
-        builder: (context, state) =>
-            ItemEditPage.create(type: state.pathParameters['type']!),
       ),
     ],
   );
