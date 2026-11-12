@@ -15,9 +15,8 @@
 # ---------------------------------------------------------------------------
 # Security headers and caching (all paths)
 # ---------------------------------------------------------------------------
-# OWNER ACTION: replace https://leopard-cwae.onrender.com in connect-src with the exact
-# Cloud Run origin (https://leopard-api-xxxx-uc.a.run.app, no trailing slash).
-# Until then every API call is blocked (fails closed).
+# connect-src must hold the exact API origin (no trailing slash); any other
+# origin is blocked, so change it here whenever the API moves.
 #
 # The CSP matches what apps/web/README.md says the build needs; widen it only
 # as far as a real CSP report in the browser console requires.

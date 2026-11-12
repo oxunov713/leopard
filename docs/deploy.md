@@ -1,11 +1,10 @@
-# Deploying the Leopard API
+# Deploying Leopard
 
-> **Live setup (2026-11):** the API runs on **Render** (free web service, Docker)
-> with **Neon** Postgres, and the web app on **Netlify**. Render is used because
-> Google Cloud asked for a $50 prepayment to open billing. The Render steps are in
-> section 0a; the Cloud Run sections below remain a working alternative.
+Two tested targets for the API, both with **Neon** Postgres: **Render**
+(free web service, Docker) and **Google Cloud Run**. The web app is static and
+is served from **Netlify** (section 8).
 
-## 0a. Render (current)
+## 0a. Render
 
 1. Neon: copy the connection string with **Connection pooling off** (no `-pooler`
    in the host), ending in `?sslmode=require`.

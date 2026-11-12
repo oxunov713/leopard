@@ -10,15 +10,45 @@ A personal, single-user, zero-knowledge password manager.
 - **API (Go)** — stores ciphertext, relays the QR handshake, manages sessions.
   It never sees the vault key, the master password or any plaintext.
 
-## Status
+## Features
 
-| Phase | Scope | State |
-|---|---|---|
-| 1 | Crypto specification, Go reference implementation, test vectors | **done** |
-| 2 | Go API: setup, device auth, QR login, items sync, sessions, emergency login, recovery, audit | **done** |
-| 3 | `packages/leopard_core` (Dart crypto, item models, API client, generator, audit) | **done** |
-| 4 | `apps/mobile`: Android app (setup, unlock, vault, generator, health, QR approval, sessions) | **done** |
-| 5 | `apps/web`: web app (QR login, emergency login, vault, generator, sessions with auto-lock) | **done** |
+- **Zero-knowledge vault** for logins, payment cards (no CVV), Wi-Fi networks,
+  API keys, SSH keys and secure notes. Every field is encrypted on the client.
+- **Phone as the key:** the Android app holds the vault key behind the device
+  screen lock; the browser gets it only for a session, through a QR handshake.
+- **Emergency access** with master password + TOTP when the phone is not at hand.
+- **Recovery key** on paper to move the vault to a new phone.
+- **Password and passphrase generator** (EFF wordlist) with entropy estimate,
+  and a password health report (weak, reused, old).
+- **Sessions and audit log:** see and revoke web sessions from the phone.
+- **Hardened web client:** strict CSP, no persistent storage, auto-lock after
+  5 minutes idle, clipboard cleared after 30 seconds.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Clients
+    M["Android app<br/>(Flutter)"]
+    W["Web app<br/>(Flutter Web)"]
+  end
+  C["leopard_core<br/>shared Dart crypto + API client"]
+  A["Go API<br/>net/http, pgx"]
+  D[("Postgres<br/>ciphertext only")]
+  M --- C
+  W --- C
+  C -- "HTTPS / JSON" --> A
+  A --> D
+  M -. "QR: VK encrypted to browser key (X25519)" .-> W
+```
+
+| Layer | Stack |
+|---|---|
+| API | Go 1.24, standard `net/http`, `pgx` v5, embedded SQL migrations, distroless image |
+| Client core | Dart: AES-256-GCM, HKDF-SHA256, Argon2id, X25519, Ed25519 (`cryptography`) |
+| Apps | Flutter, Material 3, BLoC/Cubit, Clean Architecture (domain / data / presentation) |
+| Design | `packages/leopard_ui`: theme tokens, custom SVG icon set, bundled fonts |
+| CI | GitHub Actions: Go tests with Postgres, Dart/Flutter analyze + tests, APK and web builds |
 
 ## Layout
 
@@ -33,15 +63,16 @@ backend/                     Go module (API server)
   internal/totp/             RFC 6238
   internal/ratelimit/        in-memory token buckets
   internal/config/           environment configuration
-  Dockerfile                 distroless, static, non-root (Cloud Run)
+  Dockerfile                 distroless, static, non-root
 packages/leopard_core/       shared pure-Dart client core: crypto, models, API client, generator, audit
+packages/leopard_ui/         shared design: Material 3 theme, icons, fonts
 apps/mobile/                 Android app (Flutter)
 apps/web/                    web app (Flutter Web)
 docs/
   crypto-spec.md             the protocol, byte for byte
   test-vectors.json          known-answer vectors every implementation must reproduce
   api.md                     every endpoint with examples
-  deploy.md                  Cloud Run + Neon
+  deploy.md                  Render or Cloud Run, Neon, Netlify
 ```
 
 ## How it works (short version)
@@ -59,7 +90,7 @@ docs/
 - **Emergency login** without the phone: master password + TOTP.
 - **Lost phone:** the recovery key registers a new phone and revokes the old one
   ("Restore with recovery key" on the first screen of the Android app). The
-  vault key is not rotated in v1.
+  vault key is not rotated yet (see Roadmap).
 
 Details and threat model: [`docs/crypto-spec.md`](docs/crypto-spec.md).
 
@@ -95,7 +126,7 @@ All settings are listed in [`backend/.env.example`](backend/.env.example):
 | `PORT` | Listen port, default `8080` |
 | `LEOPARD_WEB_ORIGIN` | Allowed browser origin(s) for CORS, comma separated |
 | `LEOPARD_SERVER_KEY` | 32 random bytes, base64; encrypts the TOTP secret at rest |
-| `LEOPARD_TRUST_PROXY` | `1` on Cloud Run: trust the last `X-Forwarded-For` entry |
+| `LEOPARD_TRUST_PROXY` | Number of trusted proxy hops in `X-Forwarded-For` (`1` Cloud Run, `2` Render) |
 | `LEOPARD_SETUP_TOKEN` | Optional: required header value for `POST /v1/setup` |
 | `LEOPARD_DEV_MEMSTORE` | `1` = in-memory store, development only |
 
@@ -127,5 +158,13 @@ dart test
 
 ## Deploy
 
-See [`docs/deploy.md`](docs/deploy.md) (Cloud Run `us-central1`, min-instances 0,
-Neon Postgres, $1 budget alert).
+See [`docs/deploy.md`](docs/deploy.md): the API runs as a single Docker
+service (Render free tier or Cloud Run), the database on Neon Postgres, and the
+web app as static files on Netlify behind strict security headers.
+
+## Roadmap
+
+- Encrypted offline cache on the phone, so the vault opens without the server.
+- Encrypted export file for offline backups.
+- Vault key rotation after a recovery; changing the master password.
+- One-time codes generated from TOTP secrets stored in login items.
