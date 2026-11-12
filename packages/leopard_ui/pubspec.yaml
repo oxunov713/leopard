@@ -1,5 +1,5 @@
 name: leopard_ui
-description: Shared visual design of Leopard: colour tokens, Material 3 dark theme, bundled fonts and the icon set. Used by the Android and web apps.
+description: Shared visual design of Leopard - colour tokens, Material 3 dark theme, bundled fonts and the icon set. Used by the Android and web apps.
 publish_to: 'none'
 version: 0.1.0
 
