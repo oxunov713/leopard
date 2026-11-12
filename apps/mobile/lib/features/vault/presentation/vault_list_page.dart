@@ -7,6 +7,7 @@ import 'package:leopard_ui/leopard_ui.dart';
 import '../../../core/lock/app_lock_cubit.dart';
 import '../../../core/security/secret_clipboard.dart';
 import '../../../core/widgets/feedback.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/tokens.dart';
 import '../domain/vault_entry.dart';
 import 'item_presentation.dart';
