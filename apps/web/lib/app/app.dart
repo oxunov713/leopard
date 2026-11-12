@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:leopard_ui/leopard_ui.dart' show leopardTheme;
 
 import '../core/security/password_handoff.dart';
 import '../core/security/secret_clipboard.dart';
@@ -112,8 +113,8 @@ class _LeopardAppState extends State<LeopardApp> {
           child: MaterialApp.router(
             title: 'Leopard',
             debugShowCheckedModeBanner: false,
-            theme: buildLeopardTheme(),
-            darkTheme: buildLeopardTheme(),
+            theme: leopardTheme(desktop: true),
+            darkTheme: leopardTheme(desktop: true),
             themeMode: ThemeMode.dark,
             routerConfig: _router,
           ),
@@ -133,7 +134,7 @@ class ConfigErrorApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Leopard',
     debugShowCheckedModeBanner: false,
-    theme: buildLeopardTheme(),
+    theme: leopardTheme(desktop: true),
     home: Scaffold(
       body: Center(
         child: ConstrainedBox(

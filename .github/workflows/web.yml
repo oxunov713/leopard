@@ -5,12 +5,14 @@ on:
     paths:
       - "apps/web/**"
       - "packages/leopard_core/**"
+      - "packages/leopard_ui/**"
       - "docs/**"
       - ".github/workflows/web.yml"
   pull_request:
     paths:
       - "apps/web/**"
       - "packages/leopard_core/**"
+      - "packages/leopard_ui/**"
       - "docs/**"
       - ".github/workflows/web.yml"
 
