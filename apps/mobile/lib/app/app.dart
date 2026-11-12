@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:leopard_ui/leopard_ui.dart' show leopardTheme;
 
 import '../core/lock/app_lock_cubit.dart';
 import '../core/security/device_authenticator.dart';
@@ -10,7 +11,6 @@ import '../core/security/secret_clipboard.dart';
 import '../features/vault/presentation/vault_cubit.dart';
 import 'dependencies.dart';
 import 'router.dart';
-import 'theme.dart';
 
 /// The root widget: providers, lifecycle-driven auto-lock and the router.
 class LeopardApp extends StatefulWidget {
@@ -88,8 +88,8 @@ class _LeopardAppState extends State<LeopardApp> {
         child: MaterialApp.router(
           title: 'Leopard',
           debugShowCheckedModeBanner: false,
-          theme: buildLeopardTheme(),
-          darkTheme: buildLeopardTheme(),
+          theme: leopardTheme(desktop: false),
+          darkTheme: leopardTheme(desktop: false),
           themeMode: ThemeMode.dark,
           routerConfig: _router,
         ),

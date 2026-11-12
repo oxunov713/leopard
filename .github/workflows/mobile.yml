@@ -5,11 +5,13 @@ on:
     paths:
       - "apps/mobile/**"
       - "packages/leopard_core/**"
+      - "packages/leopard_ui/**"
       - ".github/workflows/mobile.yml"
   pull_request:
     paths:
       - "apps/mobile/**"
       - "packages/leopard_core/**"
+      - "packages/leopard_ui/**"
       - ".github/workflows/mobile.yml"
 
 permissions:
@@ -40,6 +42,19 @@ jobs:
           flutter-version: 3.47.9
           cache: true
       - run: flutter --version
+      - name: leopard_ui (format, analyze, test)
+        working-directory: packages/leopard_ui
+        run: |
+          flutter pub get
+          if ! dart format --output=none --set-exit-if-changed lib test; then
+            dart format lib test > /dev/null
+            echo "-----BEGIN FORMAT PATCH-----"
+            git diff -- lib test | gzip -9 | base64 -w 120
+            echo "-----END FORMAT PATCH-----"
+            exit 1
+          fi
+          flutter analyze --fatal-infos
+          flutter test
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze --fatal-infos

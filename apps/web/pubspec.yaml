@@ -13,6 +13,8 @@ dependencies:
 
   leopard_core:
     path: ../../packages/leopard_core
+  leopard_ui:
+    path: ../../packages/leopard_ui
 
   bloc: ^9.0.0
   equatable: ^2.0.7
