@@ -29,7 +29,11 @@ class LoginPage extends StatelessWidget {
               key: const Key('login-generator'),
               onPressed: () => context.go('/login/generator'),
               icon: const LeopardIcon(LeopardIcons.generator, size: 18),
-              label: const Text('Password generator'),
+              label: Text(
+                MediaQuery.sizeOf(context).width < 600
+                    ? 'Generator'
+                    : 'Password generator',
+              ),
             ),
           ),
           Expanded(
@@ -324,38 +328,7 @@ class _QrPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: LinearProgressIndicator(
-                      value: state.totalSeconds <= 0
-                          ? 0
-                          : (state.secondsLeft / state.totalSeconds).clamp(
-                              0.0,
-                              1.0,
-                            ),
-                      minHeight: 4,
-                      backgroundColor: LeopardColors.divider,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  state.reconnecting
-                      ? 'Connection problem. Retrying…'
-                      : 'New code in ${state.secondsLeft} s',
-                  key: const Key('login-countdown'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: state.reconnecting
-                        ? warningColor
-                        : LeopardColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
+            _Countdown(state: state),
           ],
         );
     }
@@ -404,4 +377,49 @@ class _Ended extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// The bar that runs down, and "New code in N s" beside it. The longer
+/// "Connection problem" text goes below the bar.
+class _Countdown extends StatelessWidget {
+  const _Countdown({required this.state});
+
+  final QrLoginState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final bar = ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: LinearProgressIndicator(
+        value: state.totalSeconds <= 0
+            ? 0
+            : (state.secondsLeft / state.totalSeconds).clamp(0.0, 1.0),
+        minHeight: 4,
+        backgroundColor: LeopardColors.divider,
+      ),
+    );
+    final label = Text(
+      state.reconnecting
+          ? 'Connection problem. Retrying…'
+          : 'New code in ${state.secondsLeft} s',
+      key: const Key('login-countdown'),
+      style: TextStyle(
+        fontSize: 12,
+        color: state.reconnecting ? warningColor : LeopardColors.textMuted,
+      ),
+    );
+    if (state.reconnecting) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [bar, const SizedBox(height: 8), label],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: bar),
+        const SizedBox(width: 10),
+        label,
+      ],
+    );
+  }
 }

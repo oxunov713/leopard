@@ -79,17 +79,19 @@ class CardPanel extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double radius;
 
+  // A Material, so that list tiles and ink effects inside can paint.
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => SizedBox(
     width: double.infinity,
-    padding: padding,
-    clipBehavior: Clip.antiAlias,
-    decoration: BoxDecoration(
+    child: Material(
       color: LeopardColors.surface,
-      border: Border.all(color: LeopardColors.divider),
-      borderRadius: BorderRadius.circular(radius),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(radius),
+        side: const BorderSide(color: LeopardColors.divider),
+      ),
+      child: Padding(padding: padding, child: child),
     ),
-    child: child,
   );
 }
 

@@ -89,7 +89,7 @@ class _VaultWorkspaceState extends State<VaultWorkspace> {
     super.initState();
     _search.text = context.read<VaultCubit>().state.query;
     _applyRoute();
-    FocusManager.instance.addListener(_onFocusChanged);
+    _searchFocus.addListener(_onFocusChanged);
   }
 
   @override
@@ -104,7 +104,7 @@ class _VaultWorkspaceState extends State<VaultWorkspace> {
 
   @override
   void dispose() {
-    FocusManager.instance.removeListener(_onFocusChanged);
+    _searchFocus.removeListener(_onFocusChanged);
     _search.dispose();
     _searchFocus.dispose();
     _rootFocus.dispose();
@@ -126,10 +126,9 @@ class _VaultWorkspaceState extends State<VaultWorkspace> {
     }
   }
 
+  /// The search field is the only text field while no editor is open.
   void _onFocusChanged() {
-    final focus = FocusManager.instance.primaryFocus;
-    final inText =
-        focus?.context?.findAncestorWidgetOfExactType<EditableText>() != null;
+    final inText = _searchFocus.hasFocus;
     if (inText != _textFocused && mounted) {
       setState(() => _textFocused = inText);
     }
