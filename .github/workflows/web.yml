@@ -1,0 +1,87 @@
+name: web
+
+on:
+  push:
+    paths:
+      - "apps/web/**"
+      - "packages/leopard_core/**"
+      - "docs/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/leopard_core/**"
+      - "docs/**"
+      - ".github/workflows/web.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Pinned: an unpinned stable broke --fatal-infos overnight
+          # (3.50 deprecates package:flutter/material.dart). Bump on purpose.
+          flutter-version: 3.47.9
+          cache: true
+      - run: flutter --version
+      - run: flutter pub get
+      # On failure the reformatted sources are printed as a patch
+      # (gzip + base64 between the markers), so a formatting slip can be
+      # fixed without a local SDK:
+      #   sed -n '/BEGIN FORMAT PATCH/,/END FORMAT PATCH/p' log | grep -v PATCH | base64 -d | gunzip | git apply
+      - name: dart format
+        run: |
+          if ! dart format --output=none --set-exit-if-changed lib test; then
+            dart format lib test > /dev/null
+            echo "-----BEGIN FORMAT PATCH-----"
+            git diff -- lib test | gzip -9 | base64 -w 120
+            echo "-----END FORMAT PATCH-----"
+            exit 1
+          fi
+      - run: flutter analyze --fatal-infos
+      - run: flutter test
+      # The same crypto as above, but in a real browser: Web Crypto for
+      # AES-GCM / HKDF / X25519 and Argon2id compiled to JavaScript, checked
+      # against values from docs/test-vectors.json.
+      - run: flutter test --platform chrome test/browser
+      # --no-web-resources-cdn: CanvasKit is served from this origin, not
+      #   from www.gstatic.com.
+      # --csp: no dynamically generated code in the compiled JavaScript.
+      # LEOPARD_API_URL: set the repository variable to build a deployable
+      #   artifact; the placeholder only proves that the build works.
+      - run: >-
+          flutter build web --release --no-web-resources-cdn --csp
+          --dart-define=LEOPARD_API_URL=${{ vars.LEOPARD_API_URL || 'https://api.leopard.invalid' }}
+      - name: The build is self-contained and fits the CSP
+        run: |
+          # CanvasKit is in the build and the loader is told to use it.
+          test -f build/web/canvaskit/canvaskit.wasm
+          test -f build/web/main.dart.js
+          grep -q '"useLocalCanvasKit":true' build/web/flutter_bootstrap.js
+          # script-src 'self' 'wasm-unsafe-eval': no inline script in the
+          # page, no eval / new Function in what it loads.
+          if grep -n '<script>' build/web/index.html; then exit 1; fi
+          if grep -n 'style=' build/web/index.html; then exit 1; fi
+          if grep -c 'new Function\|eval(' build/web/main.dart.js build/web/canvaskit/canvaskit.js build/web/canvaskit/chromium/canvaskit.js; then exit 1; fi
+          # The fonts are bundled.
+          ls build/web/assets/assets/fonts/Roboto-Regular.ttf build/web/assets/assets/fonts/RobotoMono-Regular.ttf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leopard-web
+          path: apps/web/build/web
+          if-no-files-found: error
+          retention-days: 7

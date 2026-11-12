@@ -18,7 +18,7 @@ A personal, single-user, zero-knowledge password manager.
 | 2 | Go API: setup, device auth, QR login, items sync, sessions, emergency login, recovery, audit | **done** |
 | 3 | `packages/leopard_core` (Dart crypto, item models, API client, generator, audit) | **done** |
 | 4 | `apps/mobile`: Android app (setup, unlock, vault, generator, health, QR approval, sessions) | **done** |
-| 5 | Web app | pending |
+| 5 | `apps/web`: web app (QR login, emergency login, vault, generator, sessions with auto-lock) | **done** |
 
 ## Layout
 
@@ -36,7 +36,7 @@ backend/                     Go module (API server)
   Dockerfile                 distroless, static, non-root (Cloud Run)
 packages/leopard_core/       shared pure-Dart client core: crypto, models, API client, generator, audit
 apps/mobile/                 Android app (Flutter)
-apps/web/                    web app (placeholder)
+apps/web/                    web app (Flutter Web)
 docs/
   crypto-spec.md             the protocol, byte for byte
   test-vectors.json          known-answer vectors every implementation must reproduce

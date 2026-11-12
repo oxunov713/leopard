@@ -1,0 +1,9 @@
+/* Shown for the moment before the app paints its first frame. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: #0a0a0c;
+  color: #e9e6df;
+  font-family: sans-serif;
+}
