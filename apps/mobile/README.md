@@ -4,7 +4,10 @@ The phone is the root of trust of a Leopard vault: it creates the vault key,
 keeps it, and hands it to a browser only after you approve a QR login.
 
 - Package / application id: `uz.azizbek.leopard`, app name "Leopard"
-- Android 8.0+ (minSdk 26), dark theme only, English UI
+- Android 8.0+ (minSdk 26), dark theme only, English UI. The look (colours, Material 3
+  theme, Inter / Space Grotesk / JetBrains Mono, icons) comes from
+  [`packages/leopard_ui`](../../packages/leopard_ui); this app adds no colours of
+  its own beyond a few warning tints in `lib/core/widgets/tokens.dart`
 - Flutter (stable), `flutter_bloc` Cubits, `go_router`, Clean Architecture
 - All cryptography comes from [`packages/leopard_core`](../../packages/leopard_core)
   (pure Dart, the implementation checked against `docs/test-vectors.json`)
@@ -33,7 +36,7 @@ Protocol: [`docs/crypto-spec.md`](../../docs/crypto-spec.md). API: [`docs/api.md
 ```
 lib/
   main.dart
-  app/                     root widget, router, theme, dependency wiring
+  app/                     root widget, router, app theme (leopard_ui), dependency wiring
   core/
     error/                 AppFailure and the error-to-text mapping
     lock/                  AppLockCubit: locked/unlocked state and auto-lock

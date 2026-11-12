@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/widgets/feedback.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/screen_lock_warning.dart';
 import '../../../core/widgets/secret_text_field.dart';
 import 'restore_cubit.dart';
+import '../../../core/widgets/tokens.dart';
 
 /// "Lost phone": registers this phone for an existing vault with the paper
 /// recovery key. Needs a [RestoreCubit] above it.
@@ -30,13 +31,14 @@ class RestorePage extends StatelessWidget {
                 state.step == RestoreStep.form
                     ? 'Restore with recovery key'
                     : 'Vault restored',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(2),
                 child: LinearProgressIndicator(
                   value: state.busy ? null : _progress(state.step),
                   minHeight: 2,
-                  backgroundColor: LeopardColors.outline,
+                  backgroundColor: LeopardColors.divider,
                 ),
               ),
             ),
@@ -110,7 +112,11 @@ class _FormStepState extends State<_FormStep> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.phonelink_erase, color: LeopardColors.brass),
+              LeopardIcon(
+                LeopardIcons.shieldAlert,
+                size: 20,
+                color: LeopardColors.primary,
+              ),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -154,7 +160,10 @@ class _FormStepState extends State<_FormStep> {
           key: const Key('restore-recovery-key'),
           controller: _recoveryKey,
           enabled: !state.busy,
-          style: secretTextStyle.copyWith(fontSize: 18, letterSpacing: 1.5),
+          style: leopardSecretTextStyle.copyWith(
+            fontSize: 18,
+            letterSpacing: 1.5,
+          ),
           textCapitalization: TextCapitalization.characters,
           autocorrect: false,
           enableSuggestions: false,
@@ -207,7 +216,7 @@ class _FormStepState extends State<_FormStep> {
         FilledButton(
           key: const Key('restore-submit'),
           onPressed: state.busy ? null : _submit,
-          child: Text(state.busy ? 'RESTORING…' : 'RESTORE VAULT'),
+          child: Text(state.busy ? 'Restoring…' : 'Restore vault'),
         ),
         if (state.busy) ...[
           const SizedBox(height: 12),
@@ -233,14 +242,18 @@ class _DoneStep extends StatelessWidget {
     return PageBody(
       children: [
         const SizedBox(height: 8),
-        const LeopardMark(subtitle: 'Your vault is on this phone.'),
+        const BrandHeader(subtitle: 'Your vault is on this phone.'),
         const SizedBox(height: 28),
         const Panel(
           key: Key('restore-old-phone-notice'),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.phonelink_erase, color: LeopardColors.ok),
+              LeopardIcon(
+                LeopardIcons.unlock,
+                size: 20,
+                color: LeopardColors.ok,
+              ),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -257,7 +270,11 @@ class _DoneStep extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.warning_amber_rounded, color: LeopardColors.warning),
+              LeopardIcon(
+                LeopardIcons.shieldAlert,
+                size: 20,
+                color: warningColor,
+              ),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -283,7 +300,7 @@ class _DoneStep extends StatelessWidget {
         FilledButton(
           key: const Key('restore-open'),
           onPressed: state.busy ? null : context.read<RestoreCubit>().openVault,
-          child: const Text('OPEN VAULT'),
+          child: const Text('Open vault'),
         ),
       ],
     );

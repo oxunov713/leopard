@@ -2,7 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:leopard_mobile/app/theme.dart';
+import 'package:leopard_mobile/app/app_theme.dart';
 import 'package:leopard_mobile/core/lock/app_lock_cubit.dart';
 import 'package:leopard_mobile/core/security/device_authenticator.dart';
 import 'package:leopard_mobile/core/security/secret_clipboard.dart';
@@ -61,7 +61,7 @@ Future<MockSecretClipboard> pumpPage(
   when(clipboard.clearNow).thenAnswer((_) async {});
   final deviceAuth = MockDeviceAuthenticator();
   when(deviceAuth.lockStatus).thenAnswer((_) async => lockStatus);
-  final app = MaterialApp(theme: buildLeopardTheme(), home: page);
+  final app = MaterialApp(theme: buildAppTheme(), home: page);
   await tester.pumpWidget(
     MultiRepositoryProvider(
       providers: [

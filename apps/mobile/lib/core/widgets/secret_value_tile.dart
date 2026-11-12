@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-
-import '../../app/theme.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
 /// Shows one field of an item.
 ///
 /// A secret value is masked until tapped, and hides itself again after
-/// [rehideAfter] or when tapped a second time.
+/// [rehideAfter] or when tapped a second time. Put it in a [CardGroup]; the
+/// card draws the dividers.
 class SecretValueTile extends StatefulWidget {
   const SecretValueTile({
     super.key,
@@ -16,6 +16,7 @@ class SecretValueTile extends StatefulWidget {
     this.secret = true,
     this.onCopy,
     this.rehideAfter = const Duration(seconds: 20),
+    this.footer,
   });
 
   final String label;
@@ -24,12 +25,15 @@ class SecretValueTile extends StatefulWidget {
   final VoidCallback? onCopy;
   final Duration rehideAfter;
 
+  /// Shown under the value, for instance a strength bar.
+  final Widget? footer;
+
   @override
   State<SecretValueTile> createState() => _SecretValueTileState();
 }
 
 class _SecretValueTileState extends State<SecretValueTile> {
-  static const String _mask = '••••••••';
+  static const String _mask = '••••••••••••••••';
 
   bool _revealed = false;
   Timer? _timer;
@@ -58,47 +62,70 @@ class _SecretValueTileState extends State<SecretValueTile> {
     return InkWell(
       onTap: widget.secret ? _toggle : null,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        padding: const EdgeInsets.fromLTRB(18, 14, 8, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.label.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      letterSpacing: 1.2,
-                      color: LeopardColors.textMuted,
-                    ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.label,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: LeopardColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        visible ? widget.value : _mask,
+                        style: widget.secret
+                            ? leopardSecretTextStyle.copyWith(
+                                fontSize: 17,
+                                letterSpacing: _revealed ? 0.4 : 2,
+                              )
+                            : const TextStyle(fontSize: 16, height: 1.35),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    visible ? widget.value : _mask,
-                    style: widget.secret
-                        ? secretTextStyle
-                        : const TextStyle(fontSize: 15, height: 1.35),
-                  ),
-                ],
-              ),
-            ),
-            if (widget.secret)
-              IconButton(
-                tooltip: _revealed ? 'Hide' : 'Reveal',
-                icon: Icon(
-                  _revealed
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
                 ),
-                onPressed: _toggle,
-              ),
-            if (widget.onCopy != null)
-              IconButton(
-                tooltip: 'Copy',
-                icon: const Icon(Icons.copy_outlined),
-                onPressed: widget.onCopy,
+                if (widget.secret)
+                  IconButton(
+                    tooltip: _revealed ? 'Hide' : 'Reveal',
+                    icon: LeopardIcon(
+                      LeopardIcons.eye,
+                      color: _revealed
+                          ? LeopardColors.primary
+                          : LeopardColors.textMuted,
+                    ),
+                    onPressed: _toggle,
+                  ),
+                if (widget.onCopy != null)
+                  IconButton(
+                    tooltip: 'Copy',
+                    style: widget.secret
+                        ? IconButton.styleFrom(
+                            backgroundColor: LeopardColors.primaryContainer,
+                          )
+                        : null,
+                    icon: LeopardIcon(
+                      LeopardIcons.copy,
+                      color: widget.secret
+                          ? LeopardColors.primary
+                          : LeopardColors.textMuted,
+                    ),
+                    onPressed: widget.onCopy,
+                  ),
+              ],
+            ),
+            if (widget.footer != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, right: 10),
+                child: widget.footer,
               ),
           ],
         ),

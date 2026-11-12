@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/widgets/page_scaffold.dart';
 
 /// First screen on a phone without a vault: create a new vault, or move an
@@ -19,13 +19,13 @@ class WelcomePage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     body: PageBody(
       children: [
-        const SizedBox(height: 32),
-        const LeopardMark(subtitle: 'Your vault. Your keys.'),
-        const SizedBox(height: 36),
+        const SizedBox(height: 56),
+        const BrandHeader(subtitle: 'Your vault. Your keys.'),
+        const SizedBox(height: 48),
         FilledButton(
           key: const Key('welcome-create'),
           onPressed: onCreate,
-          child: const Text('CREATE NEW VAULT'),
+          child: const Text('Create new vault'),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -37,7 +37,7 @@ class WelcomePage extends StatelessWidget {
         OutlinedButton(
           key: const Key('welcome-restore'),
           onPressed: onRestore,
-          child: const Text('RESTORE WITH RECOVERY KEY'),
+          child: const Text('Restore with recovery key'),
         ),
         const SizedBox(height: 8),
         const Text(

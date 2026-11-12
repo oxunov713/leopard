@@ -182,7 +182,7 @@ void main() {
       await tester.tap(
         find.descendant(
           of: find.byKey(const Key('field-password')),
-          matching: find.byIcon(Icons.copy_outlined),
+          matching: find.byTooltip('Copy'),
         ),
       );
       await tester.pump();
@@ -345,8 +345,8 @@ void main() {
       );
       expect(find.textContaining('Alpha (server)'), findsOneWidget);
       expect(find.textContaining('version 4'), findsOneWidget);
-      expect(find.text('KEEP MINE'), findsOneWidget);
-      expect(find.text('TAKE SERVER'), findsOneWidget);
+      expect(find.text('Keep mine'), findsOneWidget);
+      expect(find.text('Take server'), findsOneWidget);
       expect(find.textContaining('my-secret-pw'), findsNothing);
     });
   });

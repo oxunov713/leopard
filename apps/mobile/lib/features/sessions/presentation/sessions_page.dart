@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leopard_core/leopard_core.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/widgets/feedback.dart';
 import 'sessions_cubit.dart';
+import '../../../core/widgets/page_scaffold.dart';
 
 String formatTimestamp(DateTime time) {
   final t = time.toLocal();
@@ -44,7 +45,7 @@ class SessionsPage extends StatelessWidget {
       context,
       title: 'Sign out all web sessions?',
       message: 'Every browser signed in to your vault is signed out now.',
-      confirmLabel: 'SIGN OUT ALL',
+      confirmLabel: 'Sign out all',
       destructive: true,
     );
     if (ok && context.mounted) {
@@ -60,7 +61,7 @@ class SessionsPage extends StatelessWidget {
           ? 'This is the session of this phone. It signs in again by '
                 'itself the next time it talks to the server.'
           : 'The session is ended immediately.',
-      confirmLabel: 'SIGN OUT',
+      confirmLabel: 'Sign out',
       destructive: true,
     );
     if (ok && context.mounted) {
@@ -73,7 +74,7 @@ class SessionsPage extends StatelessWidget {
     final cubit = context.read<SessionsCubit>();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SESSIONS'),
+        title: const Text('Sessions'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -91,7 +92,7 @@ class SessionsPage extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           return RefreshIndicator(
-            color: LeopardColors.brass,
+            color: LeopardColors.primary,
             backgroundColor: LeopardColors.surfaceHigh,
             onRefresh: cubit.load,
             child: ListView(
@@ -110,7 +111,7 @@ class SessionsPage extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.logout),
                     label: Text(
-                      'SIGN OUT ALL WEB SESSIONS (${state.webSessionCount})',
+                      'Sign out all web sessions (${state.webSessionCount})',
                     ),
                   ),
                 ),
@@ -121,41 +122,51 @@ class SessionsPage extends StatelessWidget {
                       state.message ?? 'The sessions could not be loaded.',
                     ),
                   ),
-                for (final session in state.sessions) ...[
-                  ListTile(
-                    key: Key('session-${session.id}'),
-                    isThreeLine: true,
-                    leading: Icon(
-                      session.kind == SessionKind.web
-                          ? Icons.language
-                          : Icons.smartphone,
-                      color: session.current ? LeopardColors.brass : null,
-                    ),
-                    title: Text(
-                      session.kind == SessionKind.web
-                          ? 'Web${_clientSuffix(session)}'
-                          : session.current
-                          ? 'This phone'
-                          : 'Phone',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      '${session.ip.isEmpty ? 'Unknown address' : session.ip}\n'
-                      'Last seen ${formatTimestamp(session.lastSeen)}',
-                      style: const TextStyle(color: LeopardColors.textMuted),
-                    ),
-                    trailing: IconButton(
-                      key: Key('session-revoke-${session.id}'),
-                      tooltip: 'Sign out',
-                      icon: const Icon(Icons.logout),
-                      onPressed: state.busy
-                          ? null
-                          : () => _revoke(context, session),
+                if (state.sessions.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: CardGroup(
+                      children: [
+                        for (final session in state.sessions)
+                          ListTile(
+                            key: Key('session-${session.id}'),
+                            isThreeLine: true,
+                            leading: Icon(
+                              session.kind == SessionKind.web
+                                  ? Icons.language
+                                  : Icons.smartphone,
+                              color: session.current
+                                  ? LeopardColors.primary
+                                  : null,
+                            ),
+                            title: Text(
+                              session.kind == SessionKind.web
+                                  ? 'Web${_clientSuffix(session)}'
+                                  : session.current
+                                  ? 'This phone'
+                                  : 'Phone',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              '${session.ip.isEmpty ? 'Unknown address' : session.ip}\n'
+                              'Last seen ${formatTimestamp(session.lastSeen)}',
+                              style: const TextStyle(
+                                color: LeopardColors.textMuted,
+                              ),
+                            ),
+                            trailing: IconButton(
+                              key: Key('session-revoke-${session.id}'),
+                              tooltip: 'Sign out',
+                              icon: const Icon(Icons.logout),
+                              onPressed: state.busy
+                                  ? null
+                                  : () => _revoke(context, session),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  const Divider(indent: 56),
-                ],
               ],
             ),
           );

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/security/secret_clipboard.dart';
 import '../../../core/widgets/feedback.dart';
 import '../../../core/widgets/page_scaffold.dart';
@@ -11,6 +11,7 @@ import '../../../core/widgets/screen_lock_warning.dart';
 import '../../../core/widgets/secret_text_field.dart';
 import '../domain/setup_repository.dart';
 import 'setup_cubit.dart';
+import '../../../core/widgets/tokens.dart';
 
 /// First-run wizard. Needs a [SetupCubit] above it.
 class SetupPage extends StatelessWidget {
@@ -50,20 +51,21 @@ class SetupPage extends StatelessWidget {
               leading: canGoBack
                   ? IconButton(
                       tooltip: 'Back',
-                      icon: const Icon(Icons.arrow_back),
+                      icon: const LeopardIcon(LeopardIcons.back),
                       onPressed: cubit.back,
                     )
                   : (canLeave ? const BackButton() : null),
               title: Text(
                 'Set up · ${state.step.index.clamp(0, 4) + 1} of 5 · '
                 '${_titles[state.step.index]}',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(2),
                 child: LinearProgressIndicator(
                   value: state.busy ? null : (state.step.index + 1) / 5,
                   minHeight: 2,
-                  backgroundColor: LeopardColors.outline,
+                  backgroundColor: LeopardColors.divider,
                 ),
               ),
             ),
@@ -118,7 +120,7 @@ class _ServerStepState extends State<_ServerStep> {
     return PageBody(
       children: [
         const SizedBox(height: 8),
-        const LeopardMark(subtitle: 'Your vault. Your keys.'),
+        const BrandHeader(subtitle: 'Your vault. Your keys.'),
         const SizedBox(height: 28),
         const Text(
           'This phone will hold the keys to your vault. The server only '
@@ -171,7 +173,7 @@ class _ServerStepState extends State<_ServerStep> {
         FilledButton(
           key: const Key('setup-server-continue'),
           onPressed: state.busy ? null : _submit,
-          child: Text(state.busy ? 'CONTACTING SERVER…' : 'CONTINUE'),
+          child: Text(state.busy ? 'Contacting server…' : 'Continue'),
         ),
       ],
     );
@@ -247,7 +249,7 @@ class _PasswordStepState extends State<_PasswordStep> {
         FilledButton(
           key: const Key('setup-password-continue'),
           onPressed: state.busy ? null : _submit,
-          child: Text(state.busy ? 'GENERATING KEYS…' : 'CONTINUE'),
+          child: Text(state.busy ? 'Generating keys…' : 'Continue'),
         ),
         if (state.busy) ...[
           const SizedBox(height: 12),
@@ -280,7 +282,7 @@ class StrengthMeter extends StatelessWidget {
     final (label, color) = switch (bits) {
       <= 0 => ('', LeopardColors.outline),
       < 40 => ('Weak', LeopardColors.danger),
-      < MasterPasswordPolicy.minBits => ('Fair', LeopardColors.warning),
+      < MasterPasswordPolicy.minBits => ('Fair', warningColor),
       < 80 => ('Strong', LeopardColors.ok),
       _ => ('Very strong', LeopardColors.ok),
     };
@@ -288,7 +290,7 @@ class StrengthMeter extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(3),
           child: LinearProgressIndicator(
             value: (bits / _fullScaleBits).clamp(0, 1).toDouble(),
             minHeight: 6,
@@ -351,10 +353,10 @@ class _RecoveryKeyStep extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       group,
-                      style: secretTextStyle.copyWith(
+                      style: leopardSecretTextStyle.copyWith(
                         fontSize: 22,
                         letterSpacing: 2,
-                        color: LeopardColors.brass,
+                        color: LeopardColors.primary,
                       ),
                     ),
                   ],
@@ -387,7 +389,7 @@ class _RecoveryKeyStep extends StatelessWidget {
           onPressed: state.recoveryAcknowledged
               ? cubit.continueFromRecoveryKey
               : null,
-          child: const Text('CONTINUE'),
+          child: const Text('Continue'),
         ),
       ],
     );
@@ -435,7 +437,10 @@ class _RecoveryCheckStepState extends State<_RecoveryCheckStep> {
           TextField(
             key: Key('setup-recovery-group-$i'),
             controller: _answers[i],
-            style: secretTextStyle.copyWith(fontSize: 20, letterSpacing: 2),
+            style: leopardSecretTextStyle.copyWith(
+              fontSize: 20,
+              letterSpacing: 2,
+            ),
             textCapitalization: TextCapitalization.characters,
             autocorrect: false,
             enableSuggestions: false,
@@ -466,7 +471,7 @@ class _RecoveryCheckStepState extends State<_RecoveryCheckStep> {
         FilledButton(
           key: const Key('setup-recovery-check-continue'),
           onPressed: _submit,
-          child: const Text('CONTINUE'),
+          child: const Text('Continue'),
         ),
       ],
     );
@@ -508,8 +513,11 @@ class _TotpStepState extends State<_TotpStep> {
         const SizedBox(height: 20),
         Center(
           child: Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.all(12),
             child: QrImageView(
               key: const Key('setup-totp-qr'),
               data: state.totpUri,
@@ -527,12 +535,15 @@ class _TotpStepState extends State<_TotpStep> {
                 child: Text(
                   _grouped(state.totpSecret),
                   key: const Key('setup-totp-secret'),
-                  style: secretTextStyle,
+                  style: leopardSecretTextStyle,
                 ),
               ),
               IconButton(
                 tooltip: 'Copy secret',
-                icon: const Icon(Icons.copy_outlined),
+                icon: const LeopardIcon(
+                  LeopardIcons.copy,
+                  color: LeopardColors.primary,
+                ),
                 onPressed: () => copySecret(
                   context,
                   context.read<SecretClipboard>(),
@@ -548,7 +559,10 @@ class _TotpStepState extends State<_TotpStep> {
           key: const Key('setup-totp-code'),
           controller: _code,
           enabled: !state.busy,
-          style: secretTextStyle.copyWith(fontSize: 24, letterSpacing: 6),
+          style: leopardSecretTextStyle.copyWith(
+            fontSize: 24,
+            letterSpacing: 6,
+          ),
           textAlign: TextAlign.center,
           keyboardType: TextInputType.number,
           autocorrect: false,
@@ -571,7 +585,7 @@ class _TotpStepState extends State<_TotpStep> {
         FilledButton(
           key: const Key('setup-finish'),
           onPressed: state.busy ? null : _submit,
-          child: Text(state.busy ? 'CREATING VAULT…' : 'CREATE VAULT'),
+          child: Text(state.busy ? 'Creating vault…' : 'Create vault'),
         ),
       ],
     );

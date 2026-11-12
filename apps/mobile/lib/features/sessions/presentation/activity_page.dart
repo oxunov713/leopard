@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:leopard_core/leopard_core.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/widgets/feedback.dart';
 import 'activity_cubit.dart';
 import 'sessions_page.dart' show formatTimestamp;
+import '../../../core/widgets/page_scaffold.dart';
+import '../../../core/widgets/tokens.dart';
 
 /// Readable names of the audit events of docs/api.md.
 const Map<String, String> auditEventLabels = {
@@ -41,14 +43,14 @@ class ActivityPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<ActivityCubit>();
     return Scaffold(
-      appBar: AppBar(title: const Text('ACTIVITY LOG')),
+      appBar: AppBar(title: const Text('Activity log')),
       body: BlocBuilder<ActivityCubit, ActivityState>(
         builder: (context, state) {
           if (!state.loaded && state.message == null) {
             return const Center(child: CircularProgressIndicator());
           }
           return RefreshIndicator(
-            color: LeopardColors.brass,
+            color: LeopardColors.primary,
             backgroundColor: LeopardColors.surfaceHigh,
             onRefresh: cubit.load,
             child: ListView(
@@ -68,17 +70,23 @@ class ActivityPage extends StatelessWidget {
                       style: TextStyle(color: LeopardColors.textMuted),
                     ),
                   ),
-                for (final entry in state.entries) ...[
-                  _EntryTile(entry: entry),
-                  const Divider(indent: 56),
-                ],
+                if (state.entries.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: CardGroup(
+                      children: [
+                        for (final entry in state.entries)
+                          _EntryTile(entry: entry),
+                      ],
+                    ),
+                  ),
                 if (state.hasMore)
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: OutlinedButton(
                       key: const Key('activity-more'),
                       onPressed: state.loading ? null : cubit.loadMore,
-                      child: Text(state.loading ? 'LOADING…' : 'OLDER'),
+                      child: Text(state.loading ? 'Loading…' : 'Older'),
                     ),
                   ),
               ],
@@ -101,11 +109,10 @@ class _EntryTile extends StatelessWidget {
     final ip = entry.ip;
     return ListTile(
       key: Key('audit-${entry.id}'),
-      dense: true,
       leading: Icon(
         alarming ? Icons.warning_amber_outlined : Icons.circle_outlined,
         size: alarming ? 22 : 12,
-        color: alarming ? LeopardColors.warning : LeopardColors.textMuted,
+        color: alarming ? warningColor : LeopardColors.textMuted,
       ),
       title: Text(auditEventLabels[entry.event] ?? entry.event),
       subtitle: Text(

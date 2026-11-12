@@ -213,12 +213,12 @@ class _StartPage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              LeopardMark(subtitle: state.message),
+              BrandHeader(subtitle: state.message),
               if (state.status == AppLockStatus.storageError) ...[
                 const SizedBox(height: 24),
                 OutlinedButton(
                   onPressed: context.read<AppLockCubit>().start,
-                  child: const Text('TRY AGAIN'),
+                  child: const Text('Try again'),
                 ),
               ],
             ],

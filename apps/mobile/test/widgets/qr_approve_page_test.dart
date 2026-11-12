@@ -5,6 +5,7 @@ import 'package:leopard_core/leopard_core.dart';
 import 'package:leopard_mobile/features/qr_approve/domain/qr_login_repository.dart';
 import 'package:leopard_mobile/features/qr_approve/presentation/qr_approve_cubit.dart';
 import 'package:leopard_mobile/features/qr_approve/presentation/qr_approve_page.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 import 'package:mocktail/mocktail.dart';
 
 import '../support/fakes.dart';
@@ -66,10 +67,10 @@ void main() {
     final code = tester.widget<Text>(find.byKey(const Key('qr-verify-code')));
     expect(code.data, '459 154');
     expect(code.style!.fontSize, greaterThanOrEqualTo(40));
-    expect(code.style!.fontFamily, 'monospace');
+    expect(code.style!.fontFamily, LeopardFonts.mono);
     expect(
       tester.widget<Text>(find.byKey(const Key('qr-instruction'))).data,
-      'MATCH THIS WITH THE BROWSER',
+      contains('The codes must match'),
     );
     expect(find.text('203.0.113.50'), findsOneWidget);
     expect(find.text('Firefox on Linux'), findsOneWidget);
@@ -100,7 +101,7 @@ void main() {
     await tester.tap(find.byKey(const Key('qr-reject')), warnIfMissed: false);
     verifyNever(cubit.approve);
     verifyNever(cubit.reject);
-    expect(find.text('WAITING FOR SCREEN LOCK…'), findsOneWidget);
+    expect(find.text('Waiting for screen lock…'), findsOneWidget);
   });
 
   testWidgets('a refused screen lock is explained on the review screen', (
@@ -162,7 +163,7 @@ void main() {
           .onPressed,
       isNull,
     );
-    expect(find.text('CHECKING…'), findsOneWidget);
+    expect(find.text('Checking…'), findsOneWidget);
   });
 
   testWidgets('outcomes', (tester) async {

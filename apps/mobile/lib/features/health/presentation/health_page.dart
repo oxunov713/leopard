@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:leopard_core/leopard_core.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
-import '../../../app/theme.dart';
 import '../../../core/widgets/feedback.dart';
 import '../../vault/presentation/vault_cubit.dart';
 import 'health_cubit.dart';
+import '../../../core/widgets/page_scaffold.dart';
+import '../../../core/widgets/tokens.dart';
 
 /// Password health: weak, reused and old passwords.
 ///
@@ -33,79 +35,82 @@ class _HealthPageState extends State<HealthPage> {
       listener: (context, vault) =>
           context.read<HealthCubit>().audit(vault.entries),
       child: Scaffold(
-        appBar: AppBar(title: const Text('PASSWORD HEALTH')),
-        body: BlocBuilder<HealthCubit, HealthState>(
-          builder: (context, state) {
-            final report = state.report;
-            if (report == null) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return ListView(
-              padding: const EdgeInsets.only(bottom: 32),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Text(
-                    report.checked == 0
-                        ? 'There are no passwords to check yet.'
-                        : report.isClean
-                        ? 'Checked ${report.checked} passwords. No problems '
-                              'found.'
-                        : 'Checked ${report.checked} passwords on this '
-                              'phone. Nothing leaves the device.',
-                    key: const Key('health-summary'),
-                    style: TextStyle(
-                      color: report.isClean && report.checked > 0
-                          ? LeopardColors.ok
-                          : LeopardColors.textMuted,
+        body: SafeArea(
+          bottom: false,
+          child: BlocBuilder<HealthCubit, HealthState>(
+            builder: (context, state) {
+              final report = state.report;
+              if (report == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return ListView(
+                padding: const EdgeInsets.only(bottom: 32),
+                children: [
+                  const LargeTitle('Health'),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                    child: Text(
+                      report.checked == 0
+                          ? 'There are no passwords to check yet.'
+                          : report.isClean
+                          ? 'Checked ${report.checked} passwords. No problems '
+                                'found.'
+                          : 'Checked ${report.checked} passwords on this '
+                                'phone. Nothing leaves the device.',
+                      key: const Key('health-summary'),
+                      style: TextStyle(
+                        color: report.isClean && report.checked > 0
+                            ? LeopardColors.ok
+                            : LeopardColors.textMuted,
+                      ),
                     ),
                   ),
-                ),
-                _Section(
-                  title: 'Weak',
-                  count: report.weak.length,
-                  children: [
-                    for (final finding in report.weak)
-                      _FindingTile(
-                        itemId: finding.itemId,
-                        title: finding.title,
-                        detail: _weakDetail(finding.strength),
-                      ),
-                  ],
-                ),
-                _Section(
-                  title: 'Reused',
-                  count: report.reused.length,
-                  children: [
-                    for (final finding in report.reused)
-                      for (final (index, itemId) in finding.itemIds.indexed)
+                  _Section(
+                    title: 'Weak',
+                    count: report.weak.length,
+                    children: [
+                      for (final finding in report.weak)
                         _FindingTile(
-                          itemId: itemId,
-                          title: finding.titles[index],
-                          detail:
-                              'Same password as '
-                              '${finding.itemIds.length - 1} other '
-                              'item${finding.itemIds.length == 2 ? '' : 's'}',
+                          itemId: finding.itemId,
+                          title: finding.title,
+                          detail: _weakDetail(finding.strength),
                         ),
-                  ],
-                ),
-                _Section(
-                  title: 'Old',
-                  count: report.old.length,
-                  children: [
-                    for (final finding in report.old)
-                      _FindingTile(
-                        itemId: finding.itemId,
-                        title: finding.title,
-                        detail:
-                            'Not changed for ${finding.age.inDays ~/ 30} '
-                            'months',
-                      ),
-                  ],
-                ),
-              ],
-            );
-          },
+                    ],
+                  ),
+                  _Section(
+                    title: 'Reused',
+                    count: report.reused.length,
+                    children: [
+                      for (final finding in report.reused)
+                        for (final (index, itemId) in finding.itemIds.indexed)
+                          _FindingTile(
+                            itemId: itemId,
+                            title: finding.titles[index],
+                            detail:
+                                'Same password as '
+                                '${finding.itemIds.length - 1} other '
+                                'item${finding.itemIds.length == 2 ? '' : 's'}',
+                          ),
+                    ],
+                  ),
+                  _Section(
+                    title: 'Old',
+                    count: report.old.length,
+                    children: [
+                      for (final finding in report.old)
+                        _FindingTile(
+                          itemId: finding.itemId,
+                          title: finding.title,
+                          detail:
+                              'Not changed for ${finding.age.inDays ~/ 30} '
+                              'months',
+                        ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -143,11 +148,14 @@ class _Section extends StatelessWidget {
       SectionLabel('$title · $count'),
       if (children.isEmpty)
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: 20),
           child: Text('None', style: TextStyle(color: LeopardColors.textMuted)),
         )
       else
-        ...children,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: CardGroup(children: children),
+        ),
     ],
   );
 }
@@ -165,11 +173,8 @@ class _FindingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-    dense: true,
-    leading: const Icon(
-      Icons.warning_amber_outlined,
-      color: LeopardColors.warning,
-    ),
+    minTileHeight: 64,
+    leading: const LeopardIcon(LeopardIcons.shieldAlert, color: warningColor),
     title: Text(title.isEmpty ? '(untitled)' : title),
     subtitle: Text(
       detail,

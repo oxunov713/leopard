@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leopard_mobile/app/router.dart';
-import 'package:leopard_mobile/app/theme.dart';
+import 'package:leopard_mobile/app/app_theme.dart';
 import 'package:leopard_mobile/core/lock/app_lock_cubit.dart';
+import 'package:leopard_ui/leopard_ui.dart';
 
 void main() {
   group('redirectFor: vault screens exist only while unlocked', () {
@@ -59,8 +60,8 @@ void main() {
   });
 
   group('theme', () {
-    test('dark only, near-black background, brass accent', () {
-      final theme = buildLeopardTheme();
+    test('dark only, near-black background, orange accent', () {
+      final theme = buildAppTheme();
       expect(theme.brightness, Brightness.dark);
       expect(theme.colorScheme.brightness, Brightness.dark);
       expect(theme.scaffoldBackgroundColor, LeopardColors.background);
@@ -69,11 +70,11 @@ void main() {
         lessThan(0.01),
         reason: 'near-black',
       );
-      expect(theme.colorScheme.primary, LeopardColors.brass);
+      expect(theme.colorScheme.primary, LeopardColors.primary);
     });
 
     test('secrets are set in a monospace face', () {
-      expect(secretTextStyle.fontFamily, 'monospace');
+      expect(leopardSecretTextStyle.fontFamily, LeopardFonts.mono);
     });
   });
 }
