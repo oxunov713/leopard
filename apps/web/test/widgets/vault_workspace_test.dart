@@ -98,8 +98,9 @@ void main() {
     return title.evaluate().isEmpty ? null : tester.widget<Text>(title).data;
   }
 
-  FocusNode searchFocus(WidgetTester tester) =>
-      tester.widget<TextField>(find.byKey(const Key('vault-search'))).focusNode!;
+  FocusNode searchFocus(WidgetTester tester) => tester
+      .widget<TextField>(find.byKey(const Key('vault-search')))
+      .focusNode!;
 
   testWidgets('three panes: list, an empty detail, and search hint', (
     tester,
@@ -218,9 +219,7 @@ void main() {
     verifyNever(() => clipboard.copy(any()));
   });
 
-  testWidgets('the copy buttons use the clipboard service too', (
-    tester,
-  ) async {
+  testWidgets('the copy buttons use the clipboard service too', (tester) async {
     await pumpWorkspace(tester);
     await tester.tap(find.byKey(Key('entry-$itemIdA')));
     await tester.pump();
@@ -293,12 +292,12 @@ void main() {
     tester,
   ) async {
     await pumpWorkspace(tester);
-    when(
-      () => repository.create(any()),
-    ).thenAnswer((invocation) async => entry(
-      '5b1d3e0a-7a52-4c53-9a5e-3f3f4b6f2c11',
-      invocation.positionalArguments.first as VaultItem,
-    ));
+    when(() => repository.create(any())).thenAnswer(
+      (invocation) async => entry(
+        '5b1d3e0a-7a52-4c53-9a5e-3f3f4b6f2c11',
+        invocation.positionalArguments.first as VaultItem,
+      ),
+    );
 
     await tester.tap(find.byKey(const Key('vault-add')));
     await tester.pumpAndSettle();

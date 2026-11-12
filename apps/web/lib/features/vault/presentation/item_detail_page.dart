@@ -101,7 +101,12 @@ class ItemDetailPage extends StatelessWidget {
             if (onBack != null) _BackBar(onBack: onBack!),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(padding, small ? 12 : 32, padding, 32),
+                padding: EdgeInsets.fromLTRB(
+                  padding,
+                  small ? 12 : 32,
+                  padding,
+                  32,
+                ),
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: ConstrainedBox(
@@ -111,18 +116,24 @@ class ItemDetailPage extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            if (type != null) ItemTypeIcon(type, size: 56, radius: 16),
+                            if (type != null)
+                              ItemTypeIcon(type, size: 56, radius: 16),
                             const SizedBox(width: 16),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    item.title.isEmpty ? '(untitled)' : item.title,
+                                    item.title.isEmpty
+                                        ? '(untitled)'
+                                        : item.title,
                                     key: const Key('item-title'),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: headingStyle(28, letterSpacing: -0.4),
+                                    style: headingStyle(
+                                      28,
+                                      letterSpacing: -0.4,
+                                    ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
@@ -284,12 +295,8 @@ class ItemDetailPage extends StatelessWidget {
       copyHint: isSecretShortcut
           ? shortcutLabel('C')
           : (isPlainShortcut ? shortcutLabel('B') : null),
-      onCopy: () => copySecret(
-        context,
-        clipboard,
-        value,
-        what: '$label copied',
-      ),
+      onCopy: () =>
+          copySecret(context, clipboard, value, what: '$label copied'),
     );
   }
 
@@ -358,7 +365,9 @@ class _HeaderButton extends StatelessWidget {
         style: IconButton.styleFrom(
           minimumSize: const Size(38, 38),
           side: const BorderSide(color: LeopardColors.outline),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
         icon: LeopardIcon(icon, size: 16),
         onPressed: onPressed,

@@ -205,8 +205,7 @@ class GeneratorPage extends StatelessWidget {
                               label: Text(entry.value),
                               selected: state.separator == entry.key,
                               showCheckmark: false,
-                              onSelected: (_) =>
-                                  cubit.setSeparator(entry.key),
+                              onSelected: (_) => cubit.setSeparator(entry.key),
                             ),
                         ],
                       ),

@@ -164,7 +164,9 @@ class _Intro extends StatelessWidget {
           minimumSize: const Size(0, 32),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
         ),
-        child: const Text('Lost your phone? Sign in with master password + code'),
+        child: const Text(
+          'Lost your phone? Sign in with master password + code',
+        ),
       ),
     ],
   );
@@ -238,7 +240,11 @@ class _QrPanel extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              LeopardIcon(LeopardIcons.unlock, color: LeopardColors.ok, size: 40),
+              LeopardIcon(
+                LeopardIcons.unlock,
+                color: LeopardColors.ok,
+                size: 40,
+              ),
               SizedBox(height: 12),
               Text('Approved. Opening the vault…'),
             ],

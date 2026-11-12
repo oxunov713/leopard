@@ -135,8 +135,7 @@ class _VaultWorkspaceState extends State<VaultWorkspace> {
     }
   }
 
-  bool get _narrow =>
-      MediaQuery.sizeOf(context).width < HomeBreakpoints.rail;
+  bool get _narrow => MediaQuery.sizeOf(context).width < HomeBreakpoints.rail;
 
   VaultEntry? get _selected {
     final id = _selectedId;
@@ -305,7 +304,8 @@ class _VaultWorkspaceState extends State<VaultWorkspace> {
   @override
   Widget build(BuildContext context) {
     final narrow = _narrow;
-    final listWidth = MediaQuery.sizeOf(context).width >= HomeBreakpoints.sidebar
+    final listWidth =
+        MediaQuery.sizeOf(context).width >= HomeBreakpoints.sidebar
         ? 380.0
         : 320.0;
     final paneOpen = _selectedId != null || _mode != _PaneMode.view;
